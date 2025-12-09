@@ -1,2 +1,22 @@
-# cms-project-youthOrg
-cms for youth org
+# Youth Organization CMS
+
+A fully dynamic, content-managed website for youth organizations.
+
+## Tech Stack
+- React 18 + TypeScript + Vite
+- TailwindCSS + Shadcn/UI
+- Supabase (Auth, Postgres, Storage, Realtime)
+
+## Quick Start
+```bash
+npm install
+npm run dev
+```
+
+## Documentation
+- [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Detailed setup instructions and architecture
+- [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) - Complete database schema documentation
+
+## Project Status
+✅ Section 1: Tech Stack Setup - Complete
+✅ Section 2: Database Schema - Complete
