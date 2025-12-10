@@ -1,32 +1,32 @@
-import { useState, useEffect } from 'react'
-import { usePalette } from '@/hooks/usePalette'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Label } from '@/components/ui/Label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { Palette, Download, Upload, RefreshCw } from 'lucide-react'
-import type { ColorPalette, ColorShades, ColorName } from '@/types/palette'
+import { useState, useEffect } from 'react';
+import { usePalette } from '@/hooks/usePalette';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { Palette, Download, Upload, RefreshCw } from 'lucide-react';
+import type { ColorPalette, ColorShades, ColorName } from '@/types/palette';
 
 export function PaletteManager() {
-  const { palette, loading, updatePalette, exportPalette, refreshPalette } = usePalette()
-  const { user, isAdmin } = useAuth()
-  const [editedPalette, setEditedPalette] = useState<ColorPalette>(palette)
-  const [saving, setSaving] = useState(false)
-  const [activeColor, setActiveColor] = useState<ColorName>('primary')
-  const [hasChanges, setHasChanges] = useState(false)
+  const { palette, loading, updatePalette, exportPalette, refreshPalette } = usePalette();
+  const { user, isAdmin } = useAuth();
+  const [editedPalette, setEditedPalette] = useState<ColorPalette>(palette);
+  const [saving, setSaving] = useState(false);
+  const [activeColor, setActiveColor] = useState<ColorName>('primary');
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    setEditedPalette(palette)
-  }, [palette])
+    setEditedPalette(palette);
+  }, [palette]);
 
   if (!isAdmin) {
     return (
       <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-700">
         Only administrators can manage the global color palette.
       </div>
-    )
+    );
   }
 
   if (loading) {
@@ -34,64 +34,64 @@ export function PaletteManager() {
       <div className="flex items-center justify-center p-12">
         <LoadingSpinner />
       </div>
-    )
+    );
   }
 
-  const handleColorChange = (shade: keyof ColorShades, value: string) => {
-    setEditedPalette(prev => ({
+  const handleColorChange = (shade: string, value: string) => {
+    setEditedPalette((prev) => ({
       ...prev,
       colors: {
         ...prev.colors,
         [activeColor]: {
           ...prev.colors[activeColor],
-          [shade]: value
-        }
-      }
-    }))
-    setHasChanges(true)
-  }
+          [shade as unknown as keyof ColorShades]: value,
+        },
+      },
+    }));
+    setHasChanges(true);
+  };
 
   const handleSave = async () => {
-    if (!user) return
+    if (!user) return;
 
-    setSaving(true)
+    setSaving(true);
     try {
-      await updatePalette(editedPalette, user.id)
-      setHasChanges(false)
-      alert('Palette saved successfully! Changes are live.')
+      await updatePalette(editedPalette, user.id);
+      setHasChanges(false);
+      alert('Palette saved successfully! Changes are live.');
     } catch (error) {
-      alert(`Failed to save palette: ${error}`)
+      alert(`Failed to save palette: ${error}`);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   const handleReset = () => {
-    setEditedPalette(palette)
-    setHasChanges(false)
-  }
+    setEditedPalette(palette);
+    setHasChanges(false);
+  };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     try {
-      const text = await file.text()
-      const imported = JSON.parse(text) as ColorPalette
-      setEditedPalette(imported)
-      setHasChanges(true)
+      const text = await file.text();
+      const imported = JSON.parse(text) as ColorPalette;
+      setEditedPalette(imported);
+      setHasChanges(true);
     } catch (error) {
-      alert('Invalid palette file. Please upload a valid JSON file.')
+      alert('Invalid palette file. Please upload a valid JSON file.');
     }
-  }
+  };
 
   const handleExport = async () => {
     try {
-      await exportPalette()
+      await exportPalette();
     } catch (error) {
-      alert('Failed to export palette')
+      alert('Failed to export palette');
     }
-  }
+  };
 
   const colorNames: ColorName[] = [
     'primary',
@@ -100,12 +100,22 @@ export function PaletteManager() {
     'neutral',
     'success',
     'warning',
-    'error'
-  ]
+    'error',
+  ];
 
   const shades = [
-    '50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'
-  ] as const
+    '50',
+    '100',
+    '200',
+    '300',
+    '400',
+    '500',
+    '600',
+    '700',
+    '800',
+    '900',
+    '950',
+  ] as const;
 
   return (
     <div className="space-y-6">
@@ -129,12 +139,7 @@ export function PaletteManager() {
               <Upload className="h-4 w-4 mr-2" />
               Import
             </span>
-            <input
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={handleImport}
-            />
+            <input type="file" accept=".json" className="hidden" onChange={handleImport} />
           </label>
           <Button variant="outline" size="sm" onClick={refreshPalette}>
             <RefreshCw className="h-4 w-4" />
@@ -143,7 +148,7 @@ export function PaletteManager() {
       </div>
 
       <div className="flex gap-2 border-b pb-2 overflow-x-auto">
-        {colorNames.map(name => (
+        {colorNames.map((name) => (
           <button
             key={name}
             onClick={() => setActiveColor(name)}
@@ -164,7 +169,7 @@ export function PaletteManager() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {shades.map(shade => (
+            {shades.map((shade) => (
               <div key={shade}>
                 <Label htmlFor={`${activeColor}-${shade}`} className="text-sm font-medium">
                   {activeColor}-{shade}
@@ -219,10 +224,10 @@ export function PaletteManager() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-7 gap-2">
-            {colorNames.map(name => (
+            {colorNames.map((name) => (
               <div key={name} className="space-y-1">
                 <p className="text-xs font-medium capitalize text-center truncate">{name}</p>
-                {shades.map(shade => (
+                {shades.map((shade) => (
                   <div
                     key={shade}
                     className="h-8 rounded border"
@@ -251,11 +256,17 @@ export function PaletteManager() {
               <Button className="bg-error-500 hover:bg-error-600">Error</Button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-6 rounded-lg" style={{ backgroundColor: editedPalette.colors.primary[500], color: '#ffffff' }}>
+              <div
+                className="p-6 rounded-lg"
+                style={{ backgroundColor: editedPalette.colors.primary[500], color: '#ffffff' }}
+              >
                 <h3 className="text-xl font-bold mb-2">Primary Background</h3>
                 <p>Text on primary color</p>
               </div>
-              <div className="p-6 rounded-lg" style={{ backgroundColor: editedPalette.colors.secondary[500], color: '#ffffff' }}>
+              <div
+                className="p-6 rounded-lg"
+                style={{ backgroundColor: editedPalette.colors.secondary[500], color: '#ffffff' }}
+              >
                 <h3 className="text-xl font-bold mb-2">Secondary Background</h3>
                 <p>Text on secondary color</p>
               </div>
@@ -264,5 +275,5 @@ export function PaletteManager() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

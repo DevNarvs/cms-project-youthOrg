@@ -1,37 +1,38 @@
-import { supabaseAdmin } from '@/lib/supabaseAdmin'
-import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { supabase, insertRow, updateRow } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
 
 export interface CreateOrgAccountData {
-  organizationName: string
-  email: string
-  password: string
-  presidentName?: string
-  presidentEmail?: string
-  presidentPhone?: string
-  contactEmail?: string
-  contactPhone?: string
-  description?: string
+  organizationName: string;
+  email: string;
+  password: string;
+  presidentName?: string;
+  presidentEmail?: string;
+  presidentPhone?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  description?: string;
 }
 
 export interface OrgAccountResult {
-  userId: string
-  organizationId: string
-  email: string
+  userId: string;
+  organizationId: string;
+  email: string;
 }
 
 export class AdminUserService {
   static ensureAdminClient() {
     if (!supabaseAdmin) {
-      throw new Error('Admin client not configured. Service role key is missing.')
+      throw new Error('Admin client not configured. Service role key is missing.');
     }
-    return supabaseAdmin
+    return supabaseAdmin;
   }
 
   static async createOrganizationAccount(
     data: CreateOrgAccountData,
     adminId: string
   ): Promise<OrgAccountResult> {
-    const admin = this.ensureAdminClient()
+    const admin = this.ensureAdminClient();
 
     try {
       const { data: authUser, error: authError } = await admin.auth.admin.createUser({
@@ -40,51 +41,53 @@ export class AdminUserService {
         email_confirm: true,
         user_metadata: {
           role: 'organization',
-          organization_name: data.organizationName
-        }
-      })
+          organization_name: data.organizationName,
+        },
+      });
 
       if (authError || !authUser.user) {
-        throw new Error(`Failed to create auth user: ${authError?.message}`)
+        throw new Error(`Failed to create auth user: ${authError?.message}`);
       }
 
-      const { data: organization, error: orgError } = await supabase
+      const orgInsert = await (supabase as any)
         .from('organizations')
         .insert({
           name: data.organizationName,
-          created_by: adminId
-        } as any)
+          created_by: adminId,
+        })
         .select()
-        .single()
+        .single();
 
-      if (orgError || !organization) {
-        await admin.auth.admin.deleteUser(authUser.user.id)
-        throw new Error(`Failed to create organization: ${orgError?.message}`)
+      const organization = orgInsert.data as
+        | Database['public']['Tables']['organizations']['Row']
+        | null;
+
+      if (!organization || orgInsert.error) {
+        await admin.auth.admin.deleteUser(authUser.user.id);
+        throw new Error(`Failed to create organization: ${orgInsert.error?.message}`);
       }
 
-      const { error: appUserError } = await supabase
-        .from('app_users')
-        .insert({
-          id: authUser.user.id,
-          email: data.email,
-          full_name: data.email.split('@')[0],
-          role: 'organization',
-          organization_id: organization.id
-        } as any)
+      const { error: appUserError } = await insertRow('app_users', {
+        id: authUser.user.id,
+        email: data.email,
+        full_name: data.email.split('@')[0],
+        role: 'organization',
+        organization_id: organization.id,
+      } as Database['public']['Tables']['app_users']['Insert']);
 
       if (appUserError) {
-        await admin.auth.admin.deleteUser(authUser.user.id)
-        await supabase.from('organizations').delete().eq('id', organization.id)
-        throw new Error(`Failed to create app user: ${appUserError.message}`)
+        await admin.auth.admin.deleteUser(authUser.user.id);
+        await supabase.from('organizations').delete().eq('id', organization.id);
+        throw new Error(`Failed to create app user: ${appUserError.message}`);
       }
 
       return {
         userId: authUser.user.id,
         organizationId: organization.id,
-        email: data.email
-      }
+        email: data.email,
+      };
     } catch (error) {
-      throw error
+      throw error;
     }
   }
 
@@ -93,237 +96,233 @@ export class AdminUserService {
     newEmail?: string,
     newPassword?: string
   ): Promise<void> {
-    const admin = this.ensureAdminClient()
+    const admin = this.ensureAdminClient();
 
-    const { data: appUser, error: fetchError } = await supabase
+    const appUserResult = await (supabase as any)
       .from('app_users')
       .select('id, email')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
-      .maybeSingle()
+      .maybeSingle();
 
-    if (fetchError || !appUser) {
-      throw new Error('Organization account not found')
+    const appUser = appUserResult.data as { id: string; email?: string } | null;
+
+    if (appUserResult.error || !appUser) {
+      throw new Error('Organization account not found');
     }
 
-    const updateData: any = {}
-    if (newEmail) updateData.email = newEmail
-    if (newPassword) updateData.password = newPassword
+    const updateData: any = {};
+    if (newEmail) updateData.email = newEmail;
+    if (newPassword) updateData.password = newPassword;
 
     if (Object.keys(updateData).length === 0) {
-      return
+      return;
     }
 
-    const { error: updateError } = await admin.auth.admin.updateUserById(
-      appUser.id,
-      updateData
-    )
+    const { error: updateError } = await admin.auth.admin.updateUserById(appUser.id, updateData);
 
     if (updateError) {
-      throw new Error(`Failed to update credentials: ${updateError.message}`)
+      throw new Error(`Failed to update credentials: ${updateError.message}`);
     }
 
     if (newEmail) {
-      await supabase
-        .from('app_users')
-        .update({ email: newEmail } as any)
-        .eq('id', appUser.id)
+      await updateRow(
+        'app_users',
+        { email: newEmail } as Database['public']['Tables']['app_users']['Update'],
+        { id: appUser.id }
+      );
     }
   }
 
   static async updatePresidentInfo(
     organizationId: string,
     presidentData: {
-      name?: string
+      name?: string;
     },
     adminId: string
   ): Promise<void> {
-    const { error } = await supabase
-      .from('organizations')
-      .update({
+    const { error } = await updateRow(
+      'organizations',
+      {
         ...presidentData,
-        updated_by: adminId
-      } as any)
-      .eq('id', organizationId)
+        updated_by: adminId,
+      } as Database['public']['Tables']['organizations']['Update'],
+      { id: organizationId }
+    );
 
     if (error) {
-      throw new Error(`Failed to update organization info: ${error.message}`)
+      throw new Error(`Failed to update organization info: ${error.message}`);
     }
   }
 
-  static async deactivateOrganizationAccount(
-    organizationId: string
-  ): Promise<void> {
-    const admin = this.ensureAdminClient()
+  static async deactivateOrganizationAccount(organizationId: string): Promise<void> {
+    const admin = this.ensureAdminClient();
 
-    const { data: appUser } = await supabase
+    const appUserResult = await (supabase as any)
       .from('app_users')
       .select('id')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
-      .maybeSingle()
+      .maybeSingle();
 
-    if (appUser) {
-      await admin.auth.admin.updateUserById(appUser.id, {
+    const appUser2 = appUserResult.data as { id: string } | null;
+
+    if (appUser2) {
+      await admin.auth.admin.updateUserById(appUser2.id, {
         ban_duration: 'none',
-        user_metadata: { banned: true }
-      })
+        user_metadata: { banned: true },
+      });
 
-      await supabase
-        .from('app_users')
-        .update({ archived: true } as any)
-        .eq('id', appUser.id)
+      await updateRow(
+        'app_users',
+        { archived: true } as Database['public']['Tables']['app_users']['Update'],
+        { id: appUser2.id }
+      );
     }
 
-    await supabase
-      .from('organizations')
-      .update({ archived: true } as any)
-      .eq('id', organizationId)
+    await updateRow(
+      'organizations',
+      { archived: true } as Database['public']['Tables']['organizations']['Update'],
+      { id: organizationId }
+    );
   }
 
-  static async reactivateOrganizationAccount(
-    organizationId: string
-  ): Promise<void> {
-    const admin = this.ensureAdminClient()
+  static async reactivateOrganizationAccount(organizationId: string): Promise<void> {
+    const admin = this.ensureAdminClient();
 
-    const { data: appUser } = await supabase
+    const appUserResult2 = await (supabase as any)
       .from('app_users')
       .select('id')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
-      .maybeSingle()
+      .maybeSingle();
 
-    if (appUser) {
-      await admin.auth.admin.updateUserById(appUser.id, {
-        user_metadata: { banned: false }
-      })
+    const appUser3 = appUserResult2.data as { id: string } | null;
 
-      await supabase
-        .from('app_users')
-        .update({ archived: false } as any)
-        .eq('id', appUser.id)
+    if (appUser3) {
+      await admin.auth.admin.updateUserById(appUser3.id, {
+        user_metadata: { banned: false },
+      });
+
+      await updateRow(
+        'app_users',
+        { archived: false } as Database['public']['Tables']['app_users']['Update'],
+        { id: appUser3.id }
+      );
     }
 
-    await supabase
-      .from('organizations')
-      .update({ archived: false } as any)
-      .eq('id', organizationId)
+    await updateRow(
+      'organizations',
+      { archived: false } as Database['public']['Tables']['organizations']['Update'],
+      { id: organizationId }
+    );
   }
 
-  static async deleteOrganizationAccount(
-    organizationId: string
-  ): Promise<void> {
-    const admin = this.ensureAdminClient()
+  static async deleteOrganizationAccount(organizationId: string): Promise<void> {
+    const admin = this.ensureAdminClient();
 
-    const { data: appUser } = await supabase
+    const appUserResult = await (supabase as any)
       .from('app_users')
       .select('id')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
-      .maybeSingle()
+      .maybeSingle();
+
+    const appUser = appUserResult.data as { id: string } | null;
 
     if (appUser) {
-      await admin.auth.admin.deleteUser(appUser.id)
+      await admin.auth.admin.deleteUser(appUser.id);
     }
 
-    await supabase
-      .from('organizations')
-      .delete()
-      .eq('id', organizationId)
+    await (supabase as any).from('organizations').delete().eq('id', organizationId);
   }
 
-  static async resetOrganizationPassword(
-    organizationId: string
-  ): Promise<string> {
-    const admin = this.ensureAdminClient()
+  static async resetOrganizationPassword(organizationId: string): Promise<string> {
+    const admin = this.ensureAdminClient();
 
-    const { data: appUser } = await supabase
+    const appUserResult4 = await (supabase as any)
       .from('app_users')
       .select('id, email')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
-      .maybeSingle()
+      .maybeSingle();
 
-    if (!appUser) {
-      throw new Error('Organization account not found')
+    const appUser4 = appUserResult4.data as { id: string; email?: string } | null;
+
+    if (!appUser4) {
+      throw new Error('Organization account not found');
     }
 
-    const tempPassword = this.generateTemporaryPassword()
+    const tempPassword = this.generateTemporaryPassword();
 
-    const { error } = await admin.auth.admin.updateUserById(
-      appUser.id,
-      { password: tempPassword }
-    )
+    const { error } = await admin.auth.admin.updateUserById(appUser4.id, {
+      password: tempPassword,
+    });
 
     if (error) {
-      throw new Error(`Failed to reset password: ${error.message}`)
+      throw new Error(`Failed to reset password: ${error.message}`);
     }
 
-    return tempPassword
+    return tempPassword;
   }
 
-  static async createAdminAccount(
-    email: string,
-    password: string
-  ): Promise<OrgAccountResult> {
-    const admin = this.ensureAdminClient()
+  static async createAdminAccount(email: string, password: string): Promise<OrgAccountResult> {
+    const admin = this.ensureAdminClient();
 
     const { data: authUser, error: authError } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       user_metadata: {
-        role: 'admin'
-      }
-    })
+        role: 'admin',
+      },
+    });
 
     if (authError || !authUser.user) {
-      throw new Error(`Failed to create admin user: ${authError?.message}`)
+      throw new Error(`Failed to create admin user: ${authError?.message}`);
     }
 
-    const { error: appUserError } = await supabase
-      .from('app_users')
-      .insert({
-        id: authUser.user.id,
-        email,
-        full_name: email.split('@')[0],
-        role: 'admin',
-        organization_id: null
-      } as any)
+    const { error: appUserError } = await supabase.from('app_users').insert({
+      id: authUser.user.id,
+      email,
+      full_name: email.split('@')[0],
+      role: 'admin',
+      organization_id: null,
+    } as any);
 
     if (appUserError) {
-      await admin.auth.admin.deleteUser(authUser.user.id)
-      throw new Error(`Failed to create admin app user: ${appUserError.message}`)
+      await admin.auth.admin.deleteUser(authUser.user.id);
+      throw new Error(`Failed to create admin app user: ${appUserError.message}`);
     }
 
     return {
       userId: authUser.user.id,
       organizationId: '',
-      email
-    }
+      email,
+    };
   }
 
   private static generateTemporaryPassword(): string {
-    const length = 12
-    const lowercase = 'abcdefghijklmnopqrstuvwxyz'
-    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    const numbers = '0123456789'
-    const special = '!@#$%^&*'
-    const all = lowercase + uppercase + numbers + special
+    const length = 12;
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*';
+    const all = lowercase + uppercase + numbers + special;
 
-    let password = ''
-    password += lowercase[Math.floor(Math.random() * lowercase.length)]
-    password += uppercase[Math.floor(Math.random() * uppercase.length)]
-    password += numbers[Math.floor(Math.random() * numbers.length)]
-    password += special[Math.floor(Math.random() * special.length)]
+    let password = '';
+    password += lowercase[Math.floor(Math.random() * lowercase.length)];
+    password += uppercase[Math.floor(Math.random() * uppercase.length)];
+    password += numbers[Math.floor(Math.random() * numbers.length)];
+    password += special[Math.floor(Math.random() * special.length)];
 
     for (let i = password.length; i < length; i++) {
-      password += all[Math.floor(Math.random() * all.length)]
+      password += all[Math.floor(Math.random() * all.length)];
     }
 
     return password
       .split('')
       .sort(() => Math.random() - 0.5)
-      .join('')
+      .join('');
   }
 }

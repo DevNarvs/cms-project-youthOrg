@@ -1,191 +1,202 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
-import { FormField } from '@/components/ui/FormField'
-import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { EmptyState } from '@/components/EmptyState'
-import { Building2, Plus, Edit2, Trash2, Eye, EyeOff } from 'lucide-react'
-import type { Organization } from '@/types/database'
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase, insertRow, updateRow } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { FormField } from '@/components/ui/FormField';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ErrorMessage } from '@/components/ErrorMessage';
+import { EmptyState } from '@/components/EmptyState';
+import { Building2, Plus, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
+import type { Organization } from '@/types/database';
 
 interface OrganizationFormData {
-  name: string
-  logo_url: string
-  primary_color: string
-  secondary_color: string
+  name: string;
+  logo_url: string;
+  primary_color: string;
+  secondary_color: string;
 }
 
 interface UpdateOrganizationVars {
-  id: string
-  data: Partial<OrganizationFormData>
+  id: string;
+  data: Partial<OrganizationFormData>;
 }
 
 interface DeleteOrganizationVars {
-  id: string
+  id: string;
 }
 
 interface ToggleActiveVars {
-  id: string
-  archived: boolean
+  id: string;
+  archived: boolean;
 }
 
 export function OrganizationManager() {
-  const { isAdmin } = useAuth()
-  const queryClient = useQueryClient()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<Organization | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const { isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Organization | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [formData, setFormData] = useState<OrganizationFormData>({
     name: '',
     logo_url: '',
     primary_color: '#3b82f6',
     secondary_color: '#64748b',
-  })
-  const [errors, setErrors] = useState<Partial<OrganizationFormData>>({})
+  });
+  const [errors, setErrors] = useState<Partial<OrganizationFormData>>({});
 
-  const { data: organizations, isLoading, error } = useQuery({
+  const {
+    data: organizations,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['organizations'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('organizations')
         .select('*')
         .eq('archived', false)
-        .order('name', { ascending: true })
+        .order('name', { ascending: true });
 
-      if (error) throw error
-      return data as Organization[]
+      if (error) throw error;
+      return data as Organization[];
     },
     enabled: isAdmin,
-  })
+  });
 
   const createMutation = useMutation<void, Error, OrganizationFormData>({
     mutationFn: async (data: OrganizationFormData) => {
-      const { error } = await supabase.from('organizations').insert(data as any)
-      if (error) throw error
+      const { error } = await insertRow(
+        'organizations',
+        data as Database['public']['Tables']['organizations']['Insert']
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      closeModal()
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      closeModal();
     },
-  })
+  });
 
   const updateMutation = useMutation<void, Error, UpdateOrganizationVars>({
     mutationFn: async ({ id, data }: UpdateOrganizationVars) => {
-      const { error } = await supabase
-        .from('organizations')
-        .update(data as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'organizations',
+        data as Database['public']['Tables']['organizations']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      closeModal()
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      closeModal();
     },
-  })
+  });
 
   const deleteMutation = useMutation<void, Error, DeleteOrganizationVars>({
     mutationFn: async ({ id }: DeleteOrganizationVars) => {
-      const { error } = await supabase
-        .from('organizations')
-        .update({ archived: true } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'organizations',
+        { archived: true } as Database['public']['Tables']['organizations']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      setDeleteConfirm(null)
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
+      setDeleteConfirm(null);
     },
-  })
+  });
 
   const toggleActiveMutation = useMutation<void, Error, ToggleActiveVars>({
     mutationFn: async ({ id, archived }: ToggleActiveVars) => {
-      const { error } = await supabase
-        .from('organizations')
-        .update({ archived } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'organizations',
+        { archived } as Database['public']['Tables']['organizations']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] })
+      queryClient.invalidateQueries({ queryKey: ['organizations'] });
     },
-  })
+  });
 
   const openModal = (item?: Organization) => {
     if (item) {
-      setEditingItem(item)
+      setEditingItem(item);
       setFormData({
         name: item.name,
         logo_url: item.logo_url || '',
         primary_color: item.primary_color,
         secondary_color: item.secondary_color,
-      })
+      });
     } else {
-      setEditingItem(null)
+      setEditingItem(null);
       setFormData({
         name: '',
         logo_url: '',
         primary_color: '#3b82f6',
         secondary_color: '#64748b',
-      })
+      });
     }
-    setErrors({})
-    setIsModalOpen(true)
-  }
+    setErrors({});
+    setIsModalOpen(true);
+  };
 
   const closeModal = () => {
-    setIsModalOpen(false)
-    setEditingItem(null)
+    setIsModalOpen(false);
+    setEditingItem(null);
     setFormData({
       name: '',
       logo_url: '',
       primary_color: '#3b82f6',
       secondary_color: '#64748b',
-    })
-    setErrors({})
-  }
+    });
+    setErrors({});
+  };
 
   const validate = (): boolean => {
-    const newErrors: Partial<OrganizationFormData> = {}
+    const newErrors: Partial<OrganizationFormData> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Organization name is required'
+      newErrors.name = 'Organization name is required';
     }
     if (!formData.primary_color || !/^#[0-9A-F]{6}$/i.test(formData.primary_color)) {
-      newErrors.primary_color = 'Invalid color format (use #RRGGBB)'
+      newErrors.primary_color = 'Invalid color format (use #RRGGBB)';
     }
     if (!formData.secondary_color || !/^#[0-9A-F]{6}$/i.test(formData.secondary_color)) {
-      newErrors.secondary_color = 'Invalid color format (use #RRGGBB)'
+      newErrors.secondary_color = 'Invalid color format (use #RRGGBB)';
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!validate()) return
+    if (!validate()) return;
 
     if (editingItem) {
-      updateMutation.mutate({ id: editingItem.id, data: formData })
+      updateMutation.mutate({ id: editingItem.id, data: formData });
     } else {
-      createMutation.mutate(formData)
+      createMutation.mutate(formData);
     }
-  }
+  };
 
   if (!isAdmin) {
-    return <ErrorMessage message="You do not have permission to manage organizations" />
+    return <ErrorMessage message="You do not have permission to manage organizations" />;
   }
 
-  if (isLoading) return <LoadingSpinner />
-  if (error) return <ErrorMessage message="Failed to load organizations" />
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message="Failed to load organizations" />;
 
   return (
     <div>
@@ -273,11 +284,7 @@ export function OrganizationManager() {
                   >
                     {!org.archived ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeleteConfirm(org.id)}
-                  >
+                  <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm(org.id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -364,10 +371,7 @@ export function OrganizationManager() {
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {createMutation.isPending || updateMutation.isPending
                 ? 'Saving...'
                 : editingItem
@@ -389,5 +393,5 @@ export function OrganizationManager() {
         loading={deleteMutation.isPending}
       />
     </div>
-  )
+  );
 }

@@ -1,202 +1,210 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
-import { FormField } from '@/components/ui/FormField'
-import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { EmptyState } from '@/components/EmptyState'
-import { Image, Plus, Edit2, Trash2, Eye, EyeOff } from 'lucide-react'
-import type { CarouselItem } from '@/types/database'
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase, insertRow, updateRow } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { FormField } from '@/components/ui/FormField';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ErrorMessage } from '@/components/ErrorMessage';
+import { EmptyState } from '@/components/EmptyState';
+import { Image, Plus, Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
+import type { CarouselItem } from '@/types/database';
 
 interface CarouselFormData {
-  title: string
-  description: string
-  image_url: string
-  link_url: string
-  display_order: number
+  title: string;
+  description: string;
+  image_url: string;
+  link_url: string;
+  display_order: number;
 }
 
 interface UpdateCarouselVars {
-  id: string
-  data: Partial<CarouselFormData>
+  id: string;
+  data: Partial<CarouselFormData>;
 }
 
 interface DeleteCarouselVars {
-  id: string
+  id: string;
 }
 
 interface ToggleCarouselApprovalVars {
-  id: string
-  approved: boolean
+  id: string;
+  approved: boolean;
 }
 
 export function CarouselManager() {
-  const { appUser, isAdmin } = useAuth()
-  const queryClient = useQueryClient()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<CarouselItem | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const { appUser, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<CarouselItem | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [formData, setFormData] = useState<CarouselFormData>({
     title: '',
     description: '',
     image_url: '',
     link_url: '',
     display_order: 0,
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  });
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const { data: items, isLoading, error } = useQuery({
+  const {
+    data: items,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['carousel-items', appUser?.organization_id],
     queryFn: async () => {
       let query = supabase
         .from('carousel_items')
         .select('*')
         .eq('archived', false)
-        .order('display_order', { ascending: true })
+        .order('display_order', { ascending: true });
 
       if (!isAdmin && appUser?.organization_id) {
-        query = query.eq('organization_id', appUser.organization_id)
+        query = query.eq('organization_id', appUser.organization_id);
       }
 
-      const { data, error } = await query
+      const { data, error } = await query;
 
-      if (error) throw error
-      return data as CarouselItem[]
+      if (error) throw error;
+      return data as CarouselItem[];
     },
-  })
+  });
 
   const createMutation = useMutation<void, Error, CarouselFormData>({
     mutationFn: async (data: CarouselFormData) => {
-      const { error } = await supabase.from('carousel_items').insert({
+      const { error } = await insertRow('carousel_items', {
         ...data,
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      } as any)
-      if (error) throw error
+      } as Database['public']['Tables']['carousel_items']['Insert']);
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['carousel-items'] })
-      closeModal()
+      queryClient.invalidateQueries({ queryKey: ['carousel-items'] });
+      closeModal();
     },
-  })
+  });
 
   const updateMutation = useMutation<void, Error, UpdateCarouselVars>({
     mutationFn: async ({ id, data }: UpdateCarouselVars) => {
-      const { error } = await supabase
-        .from('carousel_items')
-        .update(data as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'carousel_items',
+        data as Database['public']['Tables']['carousel_items']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['carousel-items'] })
-      closeModal()
+      queryClient.invalidateQueries({ queryKey: ['carousel-items'] });
+      closeModal();
     },
-  })
+  });
 
   const deleteMutation = useMutation<void, Error, DeleteCarouselVars>({
     mutationFn: async ({ id }: DeleteCarouselVars) => {
-      const { error } = await supabase
-        .from('carousel_items')
-        .update({ archived: true } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'carousel_items',
+        { archived: true } as Database['public']['Tables']['carousel_items']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['carousel-items'] })
-      setDeleteConfirm(null)
+      queryClient.invalidateQueries({ queryKey: ['carousel-items'] });
+      setDeleteConfirm(null);
     },
-  })
+  });
 
   const toggleApprovalMutation = useMutation<void, Error, ToggleCarouselApprovalVars>({
     mutationFn: async ({ id, approved }: ToggleCarouselApprovalVars) => {
-      const { error } = await supabase
-        .from('carousel_items')
-        .update({ approved } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'carousel_items',
+        { approved } as Database['public']['Tables']['carousel_items']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['carousel-items'] })
+      queryClient.invalidateQueries({ queryKey: ['carousel-items'] });
     },
-  })
+  });
 
   const openModal = (item?: CarouselItem) => {
     if (item) {
-      setEditingItem(item)
+      setEditingItem(item);
       setFormData({
         title: item.title,
         description: item.description || '',
         image_url: item.image_url,
         link_url: item.link_url || '',
         display_order: item.display_order,
-      })
+      });
     } else {
-      setEditingItem(null)
+      setEditingItem(null);
       setFormData({
         title: '',
         description: '',
         image_url: '',
         link_url: '',
         display_order: (items?.length || 0) + 1,
-      })
+      });
     }
-    setErrors({})
-    setIsModalOpen(true)
-  }
+    setErrors({});
+    setIsModalOpen(true);
+  };
 
   const closeModal = () => {
-    setIsModalOpen(false)
-    setEditingItem(null)
+    setIsModalOpen(false);
+    setEditingItem(null);
     setFormData({
       title: '',
       description: '',
       image_url: '',
       link_url: '',
       display_order: 0,
-    })
-    setErrors({})
-  }
+    });
+    setErrors({});
+  };
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {}
+    const newErrors: Record<string, string> = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required'
+      newErrors.title = 'Title is required';
     }
     if (!formData.image_url.trim()) {
-      newErrors.image_url = 'Image URL is required'
+      newErrors.image_url = 'Image URL is required';
     }
     if (formData.display_order < 0) {
-      newErrors.display_order = 'Display order must be positive'
+      newErrors.display_order = 'Display order must be positive';
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!validate()) return
+    if (!validate()) return;
 
     if (editingItem) {
-      updateMutation.mutate({ id: editingItem.id, data: formData })
+      updateMutation.mutate({ id: editingItem.id, data: formData });
     } else {
-      createMutation.mutate(formData)
+      createMutation.mutate(formData);
     }
-  }
+  };
 
-  if (isLoading) return <LoadingSpinner />
-  if (error) return <ErrorMessage message="Failed to load carousel items" />
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message="Failed to load carousel items" />;
 
   return (
     <div>
@@ -272,18 +280,10 @@ export function CarouselManager() {
                         })
                       }
                     >
-                      {item.approved ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                      {item.approved ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   )}
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeleteConfirm(item.id)}
-                  >
+                  <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm(item.id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -358,10 +358,7 @@ export function CarouselManager() {
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {createMutation.isPending || updateMutation.isPending
                 ? 'Saving...'
                 : editingItem
@@ -383,5 +380,5 @@ export function CarouselManager() {
         loading={deleteMutation.isPending}
       />
     </div>
-  )
+  );
 }

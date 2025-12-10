@@ -1,209 +1,217 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
-import { FormField } from '@/components/ui/FormField'
-import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { EmptyState } from '@/components/EmptyState'
-import { Calendar, Plus, Edit2, Trash2, Eye, EyeOff, MapPin } from 'lucide-react'
-import { format } from 'date-fns'
-import type { Program } from '@/types/database'
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase, insertRow, updateRow } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { FormField } from '@/components/ui/FormField';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ErrorMessage } from '@/components/ErrorMessage';
+import { EmptyState } from '@/components/EmptyState';
+import { Calendar, Plus, Edit2, Trash2, Eye, EyeOff, MapPin } from 'lucide-react';
+import { format } from 'date-fns';
+import type { Program } from '@/types/database';
 
 interface ProgramFormData {
-  name: string
-  description: string
-  start_date: string
-  end_date: string
-  image_url: string
+  name: string;
+  description: string;
+  start_date: string;
+  end_date: string;
+  image_url: string;
 }
 
 interface UpdateProgramVars {
-  id: string
-  data: Partial<ProgramFormData>
+  id: string;
+  data: Partial<ProgramFormData>;
 }
 
 interface DeleteProgramVars {
-  id: string
+  id: string;
 }
 
 interface ToggleProgramApprovalVars {
-  id: string
-  approved: boolean
+  id: string;
+  approved: boolean;
 }
 
 export function ProgramsEditor() {
-  const { appUser, isAdmin } = useAuth()
-  const queryClient = useQueryClient()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<Program | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const { appUser, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Program | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [formData, setFormData] = useState<ProgramFormData>({
     name: '',
     description: '',
     start_date: '',
     end_date: '',
     image_url: '',
-  })
-  const [errors, setErrors] = useState<Partial<ProgramFormData>>({})
+  });
+  const [errors, setErrors] = useState<Partial<ProgramFormData>>({});
 
-  const { data: programs, isLoading, error } = useQuery({
+  const {
+    data: programs,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['programs', appUser?.organization_id],
     queryFn: async () => {
       let query = supabase
         .from('programs')
         .select('*')
         .eq('archived', false)
-        .order('start_date', { ascending: false })
+        .order('start_date', { ascending: false });
 
       if (!isAdmin && appUser?.organization_id) {
-        query = query.eq('organization_id', appUser.organization_id)
+        query = query.eq('organization_id', appUser.organization_id);
       }
 
-      const { data, error } = await query
+      const { data, error } = await query;
 
-      if (error) throw error
-      return data as Program[]
+      if (error) throw error;
+      return data as Program[];
     },
-  })
+  });
 
   const createMutation = useMutation<void, Error, ProgramFormData>({
     mutationFn: async (data: ProgramFormData) => {
-      const { error } = await supabase.from('programs').insert({
+      const { error } = await insertRow('programs', {
         ...data,
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      } as any)
-      if (error) throw error
+      } as Database['public']['Tables']['programs']['Insert']);
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs'] })
-      closeModal()
+      queryClient.invalidateQueries({ queryKey: ['programs'] });
+      closeModal();
     },
-  })
+  });
 
   const updateMutation = useMutation<void, Error, UpdateProgramVars>({
     mutationFn: async ({ id, data }: UpdateProgramVars) => {
-      const { error } = await supabase
-        .from('programs')
-        .update(data as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'programs',
+        data as Database['public']['Tables']['programs']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs'] })
-      closeModal()
+      queryClient.invalidateQueries({ queryKey: ['programs'] });
+      closeModal();
     },
-  })
+  });
 
   const deleteMutation = useMutation<void, Error, DeleteProgramVars>({
     mutationFn: async ({ id }: DeleteProgramVars) => {
-      const { error } = await supabase
-        .from('programs')
-        .update({ archived: true } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'programs',
+        { archived: true } as Database['public']['Tables']['programs']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs'] })
-      setDeleteConfirm(null)
+      queryClient.invalidateQueries({ queryKey: ['programs'] });
+      setDeleteConfirm(null);
     },
-  })
+  });
 
   const toggleApprovalMutation = useMutation<void, Error, ToggleProgramApprovalVars>({
     mutationFn: async ({ id, approved }: ToggleProgramApprovalVars) => {
-      const { error } = await supabase
-        .from('programs')
-        .update({ approved } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'programs',
+        { approved } as Database['public']['Tables']['programs']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['programs'] })
+      queryClient.invalidateQueries({ queryKey: ['programs'] });
     },
-  })
+  });
 
   const openModal = (item?: Program) => {
     if (item) {
-      setEditingItem(item)
+      setEditingItem(item);
       setFormData({
         name: item.name,
         description: item.description,
         start_date: item.start_date ? item.start_date.split('T')[0] : '',
         end_date: item.end_date ? item.end_date.split('T')[0] : '',
         image_url: item.image_url || '',
-      })
+      });
     } else {
-      setEditingItem(null)
+      setEditingItem(null);
       setFormData({
         name: '',
         description: '',
         start_date: '',
         end_date: '',
         image_url: '',
-      })
+      });
     }
-    setErrors({})
-    setIsModalOpen(true)
-  }
+    setErrors({});
+    setIsModalOpen(true);
+  };
 
   const closeModal = () => {
-    setIsModalOpen(false)
-    setEditingItem(null)
+    setIsModalOpen(false);
+    setEditingItem(null);
     setFormData({
       name: '',
       description: '',
       start_date: '',
       end_date: '',
       image_url: '',
-    })
-    setErrors({})
-  }
+    });
+    setErrors({});
+  };
 
   const validate = (): boolean => {
-    const newErrors: Partial<ProgramFormData> = {}
+    const newErrors: Partial<ProgramFormData> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'Program name is required'
+      newErrors.name = 'Program name is required';
     }
     if (!formData.description.trim()) {
-      newErrors.description = 'Description is required'
+      newErrors.description = 'Description is required';
     }
     if (!formData.start_date) {
-      newErrors.start_date = 'Start date is required'
+      newErrors.start_date = 'Start date is required';
     }
     if (!formData.end_date) {
-      newErrors.end_date = 'End date is required'
+      newErrors.end_date = 'End date is required';
     }
     if (formData.start_date && formData.end_date && formData.end_date < formData.start_date) {
-      newErrors.end_date = 'End date must be after start date'
+      newErrors.end_date = 'End date must be after start date';
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!validate()) return
+    if (!validate()) return;
 
     if (editingItem) {
-      updateMutation.mutate({ id: editingItem.id, data: formData })
+      updateMutation.mutate({ id: editingItem.id, data: formData });
     } else {
-      createMutation.mutate(formData)
+      createMutation.mutate(formData);
     }
-  }
+  };
 
-  if (isLoading) return <LoadingSpinner />
-  if (error) return <ErrorMessage message="Failed to load programs" />
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message="Failed to load programs" />;
 
   return (
     <div>
@@ -354,7 +362,6 @@ export function ProgramsEditor() {
             </FormField>
           </div>
 
-
           <FormField label="Image URL" error={errors.image_url} htmlFor="image_url">
             <Input
               id="image_url"
@@ -368,10 +375,7 @@ export function ProgramsEditor() {
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {createMutation.isPending || updateMutation.isPending
                 ? 'Saving...'
                 : editingItem
@@ -393,5 +397,5 @@ export function ProgramsEditor() {
         loading={deleteMutation.isPending}
       />
     </div>
-  )
+  );
 }

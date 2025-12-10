@@ -1,26 +1,31 @@
-import { useState, useRef } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/Button'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { EmptyState } from '@/components/EmptyState'
-import { File, Upload, Trash2, Download, FileText, Image as ImageIcon } from 'lucide-react'
-import { format } from 'date-fns'
-import type { FileItem } from '@/types/database'
+import { useState, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase, insertRow, updateRow } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ErrorMessage } from '@/components/ErrorMessage';
+import { EmptyState } from '@/components/EmptyState';
+import { File, Upload, Trash2, Download, FileText, Image as ImageIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import type { FileItem } from '@/types/database';
 
 export function FileUploader() {
-  const { appUser } = useAuth()
-  const queryClient = useQueryClient()
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const { appUser } = useAuth();
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const { data: files, isLoading, error } = useQuery({
+  const {
+    data: files,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['files', appUser?.organization_id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -28,94 +33,95 @@ export function FileUploader() {
         .select('*')
         .eq('organization_id', appUser?.organization_id || '')
         .eq('archived', false)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false });
 
-      if (error) throw error
-      return data as FileItem[]
+      if (error) throw error;
+      return data as FileItem[];
     },
     enabled: !!appUser?.organization_id,
-  })
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from('org_files')
-        .update({ archived: true } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'org_files',
+        { archived: true } as Database['public']['Tables']['org_files']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['files'] })
-      setDeleteConfirm(null)
+      queryClient.invalidateQueries({ queryKey: ['files'] });
+      setDeleteConfirm(null);
     },
-  })
+  });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    const file = e.target.files?.[0];
+    if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      setUploadError('File size must be less than 10MB')
-      return
+      setUploadError('File size must be less than 10MB');
+      return;
     }
 
-    setUploading(true)
-    setUploadError(null)
+    setUploading(true);
+    setUploadError(null);
 
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${appUser?.organization_id}/${Date.now()}.${fileExt}`
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${appUser?.organization_id}/${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('organization-files')
-        .upload(fileName, file)
+        .upload(fileName, file);
 
-      if (uploadError) throw uploadError
+      if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('organization-files')
-        .getPublicUrl(fileName)
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from('organization-files').getPublicUrl(fileName);
 
-      const { error: dbError } = await supabase.from('org_files').insert({
+      const { error: dbError } = await insertRow('org_files', {
         organization_id: appUser?.organization_id,
         file_name: file.name,
         file_url: publicUrl,
         file_type: file.type,
         file_size: file.size,
         uploaded_by: appUser?.id,
-      } as any)
+      } as Database['public']['Tables']['org_files']['Insert']);
 
-      if (dbError) throw dbError
+      if (dbError) throw dbError;
 
-      queryClient.invalidateQueries({ queryKey: ['files'] })
+      queryClient.invalidateQueries({ queryKey: ['files'] });
 
       if (fileInputRef.current) {
-        fileInputRef.current.value = ''
+        fileInputRef.current.value = '';
       }
     } catch (err) {
-      setUploadError(err instanceof Error ? err.message : 'Failed to upload file')
+      setUploadError(err instanceof Error ? err.message : 'Failed to upload file');
     } finally {
-      setUploading(false)
+      setUploading(false);
     }
-  }
+  };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
-  }
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) {
-      return <ImageIcon className="h-8 w-8" />
+      return <ImageIcon className="h-8 w-8" />;
     }
-    return <FileText className="h-8 w-8" />
-  }
+    return <FileText className="h-8 w-8" />;
+  };
 
-  if (isLoading) return <LoadingSpinner />
-  if (error) return <ErrorMessage message="Failed to load files" />
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message="Failed to load files" />;
 
   return (
     <div>
@@ -129,10 +135,7 @@ export function FileUploader() {
             className="hidden"
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
           />
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-          >
+          <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
             <Upload className="h-4 w-4 mr-2" />
             {uploading ? 'Uploading...' : 'Upload File'}
           </Button>
@@ -188,11 +191,7 @@ export function FileUploader() {
                     <Download className="h-4 w-4 mr-1" />
                     Download
                   </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeleteConfirm(file.id)}
-                  >
+                  <Button variant="destructive" size="sm" onClick={() => setDeleteConfirm(file.id)}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -213,5 +212,5 @@ export function FileUploader() {
         loading={deleteMutation.isPending}
       />
     </div>
-  )
+  );
 }

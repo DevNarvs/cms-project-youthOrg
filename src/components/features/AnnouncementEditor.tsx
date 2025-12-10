@@ -1,193 +1,204 @@
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/hooks/useAuth'
-import { Button } from '@/components/ui/Button'
-import { Modal } from '@/components/ui/Modal'
-import { FormField } from '@/components/ui/FormField'
-import { Input } from '@/components/ui/Input'
-import { Textarea } from '@/components/ui/Textarea'
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { LoadingSpinner } from '@/components/LoadingSpinner'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { EmptyState } from '@/components/EmptyState'
-import { FileText, Plus, Edit2, Trash2, Eye, EyeOff, Calendar } from 'lucide-react'
-import { format } from 'date-fns'
-import type { Announcement } from '@/types/database'
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase, insertRow, updateRow } from '@/lib/supabase';
+import type { Database } from '@/types/supabase';
+import { useAuth } from '@/hooks/useAuth';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { FormField } from '@/components/ui/FormField';
+import { Input } from '@/components/ui/Input';
+import { Textarea } from '@/components/ui/Textarea';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { ErrorMessage } from '@/components/ErrorMessage';
+import { EmptyState } from '@/components/EmptyState';
+import { FileText, Plus, Edit2, Trash2, Eye, EyeOff, Calendar } from 'lucide-react';
+import { format } from 'date-fns';
+import type { Announcement } from '@/types/database';
 
 interface AnnouncementFormData {
-  title: string
-  content: string
-  published_date: string
+  title: string;
+  content: string;
+  published_date: string;
 }
 
 interface UpdateAnnouncementVars {
-  id: string
-  data: Partial<AnnouncementFormData>
+  id: string;
+  data: Partial<AnnouncementFormData>;
 }
 
 interface DeleteAnnouncementVars {
-  id: string
+  id: string;
 }
 
 interface ToggleApprovalVars {
-  id: string
-  approved: boolean
+  id: string;
+  approved: boolean;
 }
 
 export function AnnouncementEditor() {
-  const { appUser, isAdmin } = useAuth()
-  const queryClient = useQueryClient()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<Announcement | null>(null)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const { appUser, isAdmin } = useAuth();
+  const queryClient = useQueryClient();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Announcement | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [formData, setFormData] = useState<AnnouncementFormData>({
     title: '',
     content: '',
     published_date: new Date().toISOString().split('T')[0],
-  })
-  const [errors, setErrors] = useState<Partial<AnnouncementFormData>>({})
+  });
+  const [errors, setErrors] = useState<Partial<AnnouncementFormData>>({});
 
-  const { data: announcements, isLoading, error } = useQuery({
+  const {
+    data: announcements,
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['announcements', appUser?.organization_id],
     queryFn: async () => {
       let query = supabase
         .from('announcements')
         .select('*')
         .eq('archived', false)
-        .order('published_date', { ascending: false })
+        .order('published_date', { ascending: false });
 
       if (!isAdmin && appUser?.organization_id) {
-        query = query.eq('organization_id', appUser.organization_id)
+        query = query.eq('organization_id', appUser.organization_id);
       }
 
-      const { data, error } = await query
+      const { data, error } = await query;
 
-      if (error) throw error
-      return data as Announcement[]
+      if (error) throw error;
+      return data as Announcement[];
     },
-  })
+  });
 
   const createMutation = useMutation<void, Error, AnnouncementFormData>({
     mutationFn: async (data: AnnouncementFormData) => {
-      const { error } = await supabase.from('announcements').insert({
+      const { error } = await insertRow('announcements', {
         ...data,
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      } as any)
-      if (error) throw error
+      } as Database['public']['Tables']['announcements']['Insert']);
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] })
-      closeModal()
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      closeModal();
     },
-  })
+  });
 
   const updateMutation = useMutation<void, Error, UpdateAnnouncementVars>({
     mutationFn: async ({ id, data }: UpdateAnnouncementVars) => {
-      const { error } = await supabase
-        .from('announcements')
-        .update(data as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'announcements',
+        data as Database['public']['Tables']['announcements']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] })
-      closeModal()
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      closeModal();
     },
-  })
+  });
 
   const deleteMutation = useMutation<void, Error, DeleteAnnouncementVars>({
     mutationFn: async ({ id }: DeleteAnnouncementVars) => {
-      const { error } = await supabase
-        .from('announcements')
-        .update({ archived: true } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'announcements',
+        { archived: true } as Database['public']['Tables']['announcements']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] })
-      setDeleteConfirm(null)
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
+      setDeleteConfirm(null);
     },
-  })
+  });
 
   const toggleApprovalMutation = useMutation<void, Error, ToggleApprovalVars>({
     mutationFn: async ({ id, approved }: ToggleApprovalVars) => {
-      const { error } = await supabase
-        .from('announcements')
-        .update({ approved } as any)
-        .eq('id', id)
-      if (error) throw error
+      const { error } = await updateRow(
+        'announcements',
+        { approved } as Database['public']['Tables']['announcements']['Update'],
+        { id }
+      );
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['announcements'] })
+      queryClient.invalidateQueries({ queryKey: ['announcements'] });
     },
-  })
+  });
 
   const openModal = (item?: Announcement) => {
     if (item) {
-      setEditingItem(item)
+      setEditingItem(item);
       setFormData({
         title: item.title,
         content: item.content,
-        published_date: typeof item.published_date === 'string' ? item.published_date.split('T')[0] : item.published_date,
-      })
+        published_date:
+          typeof item.published_date === 'string'
+            ? item.published_date.split('T')[0]
+            : item.published_date,
+      });
     } else {
-      setEditingItem(null)
+      setEditingItem(null);
       setFormData({
         title: '',
         content: '',
         published_date: new Date().toISOString().split('T')[0],
-      })
+      });
     }
-    setErrors({})
-    setIsModalOpen(true)
-  }
+    setErrors({});
+    setIsModalOpen(true);
+  };
 
   const closeModal = () => {
-    setIsModalOpen(false)
-    setEditingItem(null)
+    setIsModalOpen(false);
+    setEditingItem(null);
     setFormData({
       title: '',
       content: '',
       published_date: new Date().toISOString().split('T')[0],
-    })
-    setErrors({})
-  }
+    });
+    setErrors({});
+  };
 
   const validate = (): boolean => {
-    const newErrors: Partial<AnnouncementFormData> = {}
+    const newErrors: Partial<AnnouncementFormData> = {};
 
     if (!formData.title.trim()) {
-      newErrors.title = 'Title is required'
+      newErrors.title = 'Title is required';
     }
     if (!formData.content.trim()) {
-      newErrors.content = 'Content is required'
+      newErrors.content = 'Content is required';
     }
     if (!formData.published_date) {
-      newErrors.published_date = 'Publish date is required'
+      newErrors.published_date = 'Publish date is required';
     }
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    if (!validate()) return
+    if (!validate()) return;
 
     if (editingItem) {
-      updateMutation.mutate({ id: editingItem.id, data: formData })
+      updateMutation.mutate({ id: editingItem.id, data: formData });
     } else {
-      createMutation.mutate(formData)
+      createMutation.mutate(formData);
     }
-  }
+  };
 
-  if (isLoading) return <LoadingSpinner />
-  if (error) return <ErrorMessage message="Failed to load announcements" />
+  if (isLoading) return <LoadingSpinner />;
+  if (error) return <ErrorMessage message="Failed to load announcements" />;
 
   return (
     <div>
@@ -232,11 +243,7 @@ export function AnnouncementEditor() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openModal(announcement)}
-                    >
+                    <Button variant="outline" size="sm" onClick={() => openModal(announcement)}>
                       <Edit2 className="h-4 w-4" />
                     </Button>
                     {isAdmin && (
@@ -268,9 +275,7 @@ export function AnnouncementEditor() {
                 </div>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground whitespace-pre-wrap">
-                  {announcement.content}
-                </p>
+                <p className="text-muted-foreground whitespace-pre-wrap">{announcement.content}</p>
               </CardContent>
             </Card>
           ))}
@@ -321,10 +326,7 @@ export function AnnouncementEditor() {
             <Button type="button" variant="outline" onClick={closeModal}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={createMutation.isPending || updateMutation.isPending}
-            >
+            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
               {createMutation.isPending || updateMutation.isPending
                 ? 'Saving...'
                 : editingItem
@@ -346,5 +348,5 @@ export function AnnouncementEditor() {
         loading={deleteMutation.isPending}
       />
     </div>
-  )
+  );
 }

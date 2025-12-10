@@ -1,0 +1,16 @@
+# robots.txt for Youth Organization CMS
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /*.json$
+
+Sitemap: https://yourdomain.com/sitemap.xml
+
+# Disallow admin and authenticated areas
+User-agent: *
+Disallow: /admin
+Disallow: /organization
+Disallow: /login
+Disallow: /register
