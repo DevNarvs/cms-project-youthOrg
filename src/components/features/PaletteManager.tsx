@@ -1,285 +1,268 @@
 import { useState, useEffect } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/lib/supabase'
-import { useAuth } from '@/contexts/AuthContext'
-import { useTheme } from '@/contexts/ThemeContext'
+import { usePalette } from '@/hooks/usePalette'
+import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/Button'
-import { FormField } from '@/components/ui/FormField'
 import { Input } from '@/components/ui/Input'
+import { Label } from '@/components/ui/Label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
-import { ErrorMessage } from '@/components/ErrorMessage'
-import { Palette, RefreshCw } from 'lucide-react'
-
-interface ColorFormData {
-  primary_color: string
-  secondary_color: string
-}
-
-const PRESET_COLORS = [
-  { name: 'Blue', primary: '#3b82f6', secondary: '#64748b' },
-  { name: 'Green', primary: '#22c55e', secondary: '#64748b' },
-  { name: 'Red', primary: '#ef4444', secondary: '#64748b' },
-  { name: 'Orange', primary: '#f97316', secondary: '#64748b' },
-  { name: 'Teal', primary: '#14b8a6', secondary: '#64748b' },
-  { name: 'Pink', primary: '#ec4899', secondary: '#64748b' },
-]
+import { LoadingSpinner } from '@/components/LoadingSpinner'
+import { Palette, Download, Upload, RefreshCw } from 'lucide-react'
+import type { ColorPalette, ColorShades, ColorName } from '@/types/palette'
 
 export function PaletteManager() {
-  const { appUser, isOrganization } = useAuth()
-  const { organization, updateTheme } = useTheme()
-  const queryClient = useQueryClient()
-  const [formData, setFormData] = useState<ColorFormData>({
-    primary_color: organization?.primary_color || '#3b82f6',
-    secondary_color: organization?.secondary_color || '#64748b',
-  })
-  const [errors, setErrors] = useState<Partial<ColorFormData>>({})
-  const [previewMode, setPreviewMode] = useState(false)
+  const { palette, loading, updatePalette, exportPalette, refreshPalette } = usePalette()
+  const { user, isAdmin } = useAuth()
+  const [editedPalette, setEditedPalette] = useState<ColorPalette>(palette)
+  const [saving, setSaving] = useState(false)
+  const [activeColor, setActiveColor] = useState<ColorName>('primary')
+  const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
-    if (organization) {
-      setFormData({
-        primary_color: organization.primary_color,
-        secondary_color: organization.secondary_color,
-      })
-    }
-  }, [organization])
+    setEditedPalette(palette)
+  }, [palette])
 
-  const updateMutation = useMutation({
-    mutationFn: async (data: ColorFormData) => {
-      if (!appUser?.organization_id) throw new Error('No organization ID')
-
-      const { error } = await supabase
-        .from('organizations')
-        .update(data as any)
-        .eq('id', appUser.organization_id)
-
-      if (error) throw error
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['organizations'] })
-      updateTheme(variables.primary_color, variables.secondary_color)
-      setPreviewMode(false)
-    },
-  })
-
-  const validate = (): boolean => {
-    const newErrors: Partial<ColorFormData> = {}
-
-    if (!formData.primary_color || !/^#[0-9A-F]{6}$/i.test(formData.primary_color)) {
-      newErrors.primary_color = 'Invalid color format (use #RRGGBB)'
-    }
-    if (!formData.secondary_color || !/^#[0-9A-F]{6}$/i.test(formData.secondary_color)) {
-      newErrors.secondary_color = 'Invalid color format (use #RRGGBB)'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
+  if (!isAdmin) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-lg text-red-700">
+        Only administrators can manage the global color palette.
+      </div>
+    )
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!validate()) return
-
-    updateMutation.mutate(formData)
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <LoadingSpinner />
+      </div>
+    )
   }
 
-  const handlePreview = () => {
-    if (!validate()) return
-    updateTheme(formData.primary_color, formData.secondary_color)
-    setPreviewMode(true)
+  const handleColorChange = (shade: keyof ColorShades, value: string) => {
+    setEditedPalette(prev => ({
+      ...prev,
+      colors: {
+        ...prev.colors,
+        [activeColor]: {
+          ...prev.colors[activeColor],
+          [shade]: value
+        }
+      }
+    }))
+    setHasChanges(true)
+  }
+
+  const handleSave = async () => {
+    if (!user) return
+
+    setSaving(true)
+    try {
+      await updatePalette(editedPalette, user.id)
+      setHasChanges(false)
+      alert('Palette saved successfully! Changes are live.')
+    } catch (error) {
+      alert(`Failed to save palette: ${error}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleReset = () => {
-    if (organization) {
-      setFormData({
-        primary_color: organization.primary_color,
-        secondary_color: organization.secondary_color,
-      })
-      updateTheme(organization.primary_color, organization.secondary_color)
-      setPreviewMode(false)
+    setEditedPalette(palette)
+    setHasChanges(false)
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      const imported = JSON.parse(text) as ColorPalette
+      setEditedPalette(imported)
+      setHasChanges(true)
+    } catch (error) {
+      alert('Invalid palette file. Please upload a valid JSON file.')
     }
   }
 
-  const applyPreset = (preset: typeof PRESET_COLORS[0]) => {
-    setFormData({
-      primary_color: preset.primary,
-      secondary_color: preset.secondary,
-    })
-    updateTheme(preset.primary, preset.secondary)
-    setPreviewMode(true)
+  const handleExport = async () => {
+    try {
+      await exportPalette()
+    } catch (error) {
+      alert('Failed to export palette')
+    }
   }
 
-  if (!isOrganization) {
-    return <ErrorMessage message="Only organization users can manage color palettes" />
-  }
+  const colorNames: ColorName[] = [
+    'primary',
+    'secondary',
+    'accent',
+    'neutral',
+    'success',
+    'warning',
+    'error'
+  ]
+
+  const shades: Array<keyof ColorShades> = [
+    '50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'
+  ]
 
   return (
-    <div className="max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold flex items-center">
-            <Palette className="h-6 w-6 mr-2" />
-            Color Palette
+          <h2 className="text-2xl font-bold flex items-center gap-2">
+            <Palette className="h-6 w-6" />
+            Global Color Palette
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Customize your organization's color scheme
+          <p className="text-sm text-gray-600 mt-1">
+            Manage site-wide color scheme with CSS variables
           </p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <label>
+            <Button variant="outline" size="sm" as="span">
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+            <input
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleImport}
+            />
+          </label>
+          <Button variant="outline" size="sm" onClick={refreshPalette}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Custom Colors</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <FormField
-                label="Primary Color"
-                required
-                error={errors.primary_color}
-                htmlFor="primary_color"
-              >
-                <div className="flex space-x-2">
-                  <Input
-                    id="primary_color"
-                    type="color"
-                    value={formData.primary_color}
-                    onChange={(e) =>
-                      setFormData({ ...formData, primary_color: e.target.value })
-                    }
-                    className="w-20 h-10"
-                  />
-                  <Input
-                    value={formData.primary_color}
-                    onChange={(e) =>
-                      setFormData({ ...formData, primary_color: e.target.value })
-                    }
-                    placeholder="#3b82f6"
-                    className="flex-1"
-                  />
-                </div>
-              </FormField>
-
-              <FormField
-                label="Secondary Color"
-                required
-                error={errors.secondary_color}
-                htmlFor="secondary_color"
-              >
-                <div className="flex space-x-2">
-                  <Input
-                    id="secondary_color"
-                    type="color"
-                    value={formData.secondary_color}
-                    onChange={(e) =>
-                      setFormData({ ...formData, secondary_color: e.target.value })
-                    }
-                    className="w-20 h-10"
-                  />
-                  <Input
-                    value={formData.secondary_color}
-                    onChange={(e) =>
-                      setFormData({ ...formData, secondary_color: e.target.value })
-                    }
-                    placeholder="#64748b"
-                    className="flex-1"
-                  />
-                </div>
-              </FormField>
-
-              <div className="flex space-x-3 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handlePreview}
-                  className="flex-1"
-                >
-                  Preview
-                </Button>
-                {previewMode && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleReset}
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Reset
-                  </Button>
-                )}
-                <Button
-                  type="submit"
-                  disabled={updateMutation.isPending}
-                  className="flex-1"
-                >
-                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
-              </div>
-
-              {previewMode && (
-                <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-md">
-                  <p className="text-sm text-yellow-700">
-                    Preview mode active. Click "Save Changes" to apply permanently.
-                  </p>
-                </div>
-              )}
-            </form>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Color Presets</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-4">
-              {PRESET_COLORS.map((preset) => (
-                <button
-                  key={preset.name}
-                  onClick={() => applyPreset(preset)}
-                  className="p-4 border border-border rounded-md hover:bg-accent transition-colors text-left"
-                >
-                  <div className="flex items-center space-x-3 mb-2">
-                    <div
-                      className="h-8 w-8 rounded border border-border"
-                      style={{ backgroundColor: preset.primary }}
-                    />
-                    <div
-                      className="h-8 w-8 rounded border border-border"
-                      style={{ backgroundColor: preset.secondary }}
-                    />
-                  </div>
-                  <p className="text-sm font-medium">{preset.name}</p>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Preview</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <Button>Primary Button</Button>
-                <Button variant="outline">Outline Button</Button>
-                <Button variant="secondary">Secondary Button</Button>
-              </div>
-              <div className="p-6 bg-primary text-primary-foreground rounded-lg">
-                <h3 className="text-xl font-bold mb-2">Primary Color Background</h3>
-                <p>This is how your primary color looks with text</p>
-              </div>
-              <div className="p-6 bg-secondary text-secondary-foreground rounded-lg">
-                <h3 className="text-xl font-bold mb-2">Secondary Color Background</h3>
-                <p>This is how your secondary color looks with text</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex gap-2 border-b pb-2 overflow-x-auto">
+        {colorNames.map(name => (
+          <button
+            key={name}
+            onClick={() => setActiveColor(name)}
+            className={`px-4 py-2 rounded-t transition capitalize whitespace-nowrap ${
+              activeColor === name
+                ? 'bg-primary-500 text-white'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+            }`}
+          >
+            {name}
+          </button>
+        ))}
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="capitalize">{activeColor} Color Shades</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {shades.map(shade => (
+              <div key={shade}>
+                <Label htmlFor={`${activeColor}-${shade}`} className="text-sm font-medium">
+                  {activeColor}-{shade}
+                </Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <Input
+                    id={`${activeColor}-${shade}`}
+                    type="color"
+                    value={editedPalette.colors[activeColor][shade]}
+                    onChange={(e) => handleColorChange(shade, e.target.value)}
+                    className="w-16 h-10 cursor-pointer p-1"
+                  />
+                  <Input
+                    type="text"
+                    value={editedPalette.colors[activeColor][shade]}
+                    onChange={(e) => handleColorChange(shade, e.target.value)}
+                    className="flex-1 font-mono text-sm"
+                    placeholder="#000000"
+                  />
+                </div>
+                <div
+                  className="h-12 rounded mt-2 border"
+                  style={{ backgroundColor: editedPalette.colors[activeColor][shade] }}
+                  title={editedPalette.colors[activeColor][shade]}
+                />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {hasChanges && (
+        <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800">
+            You have unsaved changes. Changes will apply site-wide immediately after saving.
+          </p>
+        </div>
+      )}
+
+      <div className="flex gap-3 justify-end">
+        <Button variant="outline" onClick={handleReset} disabled={!hasChanges}>
+          Reset Changes
+        </Button>
+        <Button onClick={handleSave} disabled={saving || !hasChanges}>
+          {saving ? 'Saving...' : 'Save Palette'}
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Color Overview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-7 gap-2">
+            {colorNames.map(name => (
+              <div key={name} className="space-y-1">
+                <p className="text-xs font-medium capitalize text-center truncate">{name}</p>
+                {shades.map(shade => (
+                  <div
+                    key={shade}
+                    className="h-8 rounded border"
+                    style={{ backgroundColor: editedPalette.colors[name][shade] }}
+                    title={`${name}-${shade}: ${editedPalette.colors[name][shade]}`}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Component Preview</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center gap-4 flex-wrap">
+              <Button className="bg-primary-500 hover:bg-primary-600">Primary</Button>
+              <Button className="bg-secondary-500 hover:bg-secondary-600">Secondary</Button>
+              <Button className="bg-accent-500 hover:bg-accent-600">Accent</Button>
+              <Button className="bg-success-500 hover:bg-success-600">Success</Button>
+              <Button className="bg-warning-500 hover:bg-warning-600">Warning</Button>
+              <Button className="bg-error-500 hover:bg-error-600">Error</Button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-6 rounded-lg" style={{ backgroundColor: editedPalette.colors.primary[500], color: '#ffffff' }}>
+                <h3 className="text-xl font-bold mb-2">Primary Background</h3>
+                <p>Text on primary color</p>
+              </div>
+              <div className="p-6 rounded-lg" style={{ backgroundColor: editedPalette.colors.secondary[500], color: '#ffffff' }}>
+                <h3 className="text-xl font-bold mb-2">Secondary Background</h3>
+                <p>Text on secondary color</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
