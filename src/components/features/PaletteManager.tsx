@@ -103,9 +103,9 @@ export function PaletteManager() {
     'error'
   ]
 
-  const shades: Array<keyof ColorShades> = [
+  const shades = [
     '50', '100', '200', '300', '400', '500', '600', '700', '800', '900', '950'
-  ]
+  ] as const
 
   return (
     <div className="space-y-6">
@@ -124,11 +124,11 @@ export function PaletteManager() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <label>
-            <Button variant="outline" size="sm" as="span">
+          <label className="cursor-pointer">
+            <span className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-md hover:bg-gray-50">
               <Upload className="h-4 w-4 mr-2" />
               Import
-            </Button>
+            </span>
             <input
               type="file"
               accept=".json"
