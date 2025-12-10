@@ -19,7 +19,7 @@ import type { Announcement } from '@/types/database'
 interface AnnouncementFormData {
   title: string
   content: string
-  publish_date: string
+  published_date: string
 }
 
 interface UpdateAnnouncementVars {
@@ -45,7 +45,7 @@ export function AnnouncementEditor() {
   const [formData, setFormData] = useState<AnnouncementFormData>({
     title: '',
     content: '',
-    publish_date: new Date().toISOString().split('T')[0],
+    published_date: new Date().toISOString().split('T')[0],
   })
   const [errors, setErrors] = useState<Partial<AnnouncementFormData>>({})
 
@@ -56,7 +56,7 @@ export function AnnouncementEditor() {
         .from('announcements')
         .select('*')
         .eq('archived', false)
-        .order('publish_date', { ascending: false })
+        .order('published_date', { ascending: false })
 
       if (!isAdmin && appUser?.organization_id) {
         query = query.eq('organization_id', appUser.organization_id)
@@ -132,14 +132,14 @@ export function AnnouncementEditor() {
       setFormData({
         title: item.title,
         content: item.content,
-        publish_date: item.publish_date.split('T')[0],
+        published_date: typeof item.published_date === 'string' ? item.published_date.split('T')[0] : item.published_date,
       })
     } else {
       setEditingItem(null)
       setFormData({
         title: '',
         content: '',
-        publish_date: new Date().toISOString().split('T')[0],
+        published_date: new Date().toISOString().split('T')[0],
       })
     }
     setErrors({})
@@ -152,7 +152,7 @@ export function AnnouncementEditor() {
     setFormData({
       title: '',
       content: '',
-      publish_date: new Date().toISOString().split('T')[0],
+      published_date: new Date().toISOString().split('T')[0],
     })
     setErrors({})
   }
@@ -166,8 +166,8 @@ export function AnnouncementEditor() {
     if (!formData.content.trim()) {
       newErrors.content = 'Content is required'
     }
-    if (!formData.publish_date) {
-      newErrors.publish_date = 'Publish date is required'
+    if (!formData.published_date) {
+      newErrors.published_date = 'Publish date is required'
     }
 
     setErrors(newErrors)
@@ -228,7 +228,7 @@ export function AnnouncementEditor() {
                     </div>
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4 mr-1" />
-                      {format(new Date(announcement.publish_date), 'MMM dd, yyyy')}
+                      {format(new Date(announcement.published_date), 'MMM dd, yyyy')}
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -306,14 +306,14 @@ export function AnnouncementEditor() {
           <FormField
             label="Publish Date"
             required
-            error={errors.publish_date}
-            htmlFor="publish_date"
+            error={errors.published_date}
+            htmlFor="published_date"
           >
             <Input
-              id="publish_date"
+              id="published_date"
               type="date"
-              value={formData.publish_date}
-              onChange={(e) => setFormData({ ...formData, publish_date: e.target.value })}
+              value={formData.published_date}
+              onChange={(e) => setFormData({ ...formData, published_date: e.target.value })}
             />
           </FormField>
 

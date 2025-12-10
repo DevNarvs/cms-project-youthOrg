@@ -13,59 +13,124 @@ export interface Database {
         Row: {
           id: string
           name: string
-          description: string
-          president_name: string
-          president_email: string
-          president_phone: string
-          contact_email: string
-          contact_phone: string
+          logo_url: string | null
           primary_color: string
           secondary_color: string
-          active: boolean
+          archived: boolean
           created_at: string
           updated_at: string
-          created_by: string
-          updated_by: string
+          created_by: string | null
+          updated_by: string | null
         }
-        Insert: Omit<Database['public']['Tables']['organizations']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['organizations']['Insert']>
+        Insert: {
+          id?: string
+          name: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
       }
       app_users: {
         Row: {
           id: string
-          auth_uid: string
-          email: string
-          role: string
           organization_id: string | null
-          active: boolean
+          role: string
+          email: string
+          full_name: string
+          archived: boolean
           created_at: string
           updated_at: string
+          created_by: string | null
+          updated_by: string | null
         }
-        Insert: Omit<Database['public']['Tables']['app_users']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['app_users']['Insert']>
+        Insert: {
+          id: string
+          organization_id?: string | null
+          role: string
+          email: string
+          full_name: string
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string | null
+          role?: string
+          email?: string
+          full_name?: string
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
       }
-      programs: {
+      carousel_items: {
         Row: {
           id: string
           organization_id: string
           title: string
-          description: string
-          category: string
-          age_group: string
-          start_date: string | null
-          end_date: string | null
-          registration_required: boolean
-          registration_deadline: string | null
-          max_participants: number | null
+          description: string | null
+          image_url: string
+          link_url: string | null
+          display_order: number
           approved: boolean
           archived: boolean
           created_at: string
           updated_at: string
-          created_by: string
-          updated_by: string
+          created_by: string | null
+          updated_by: string | null
         }
-        Insert: Omit<Database['public']['Tables']['programs']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['programs']['Insert']>
+        Insert: {
+          id?: string
+          organization_id: string
+          title: string
+          description?: string | null
+          image_url: string
+          link_url?: string | null
+          display_order?: number
+          approved?: boolean
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          title?: string
+          description?: string | null
+          image_url?: string
+          link_url?: string | null
+          display_order?: number
+          approved?: boolean
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
       }
       announcements: {
         Row: {
@@ -73,35 +138,87 @@ export interface Database {
           organization_id: string
           title: string
           content: string
-          priority: string
-          expires_at: string | null
+          published_date: string
           approved: boolean
           archived: boolean
           created_at: string
           updated_at: string
-          created_by: string
-          updated_by: string
+          created_by: string | null
+          updated_by: string | null
         }
-        Insert: Omit<Database['public']['Tables']['announcements']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['announcements']['Insert']>
+        Insert: {
+          id?: string
+          organization_id: string
+          title: string
+          content: string
+          published_date?: string
+          approved?: boolean
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          title?: string
+          content?: string
+          published_date?: string
+          approved?: boolean
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
       }
-      carousel_items: {
+      programs: {
         Row: {
           id: string
           organization_id: string
-          title: string
-          subtitle: string | null
-          image_url: string
-          link_url: string | null
-          display_order: number
-          active: boolean
+          name: string
+          description: string
+          start_date: string | null
+          end_date: string | null
+          image_url: string | null
+          approved: boolean
+          archived: boolean
           created_at: string
           updated_at: string
-          created_by: string
-          updated_by: string
+          created_by: string | null
+          updated_by: string | null
         }
-        Insert: Omit<Database['public']['Tables']['carousel_items']['Row'], 'id' | 'created_at' | 'updated_at'>
-        Update: Partial<Database['public']['Tables']['carousel_items']['Insert']>
+        Insert: {
+          id?: string
+          organization_id: string
+          name: string
+          description: string
+          start_date?: string | null
+          end_date?: string | null
+          image_url?: string | null
+          approved?: boolean
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          name?: string
+          description?: string
+          start_date?: string | null
+          end_date?: string | null
+          image_url?: string | null
+          approved?: boolean
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
       }
       org_files: {
         Row: {
@@ -111,11 +228,76 @@ export interface Database {
           file_url: string
           file_type: string
           file_size: number
-          uploaded_by: string
+          description: string | null
+          approved: boolean
+          archived: boolean
           created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
         }
-        Insert: Omit<Database['public']['Tables']['org_files']['Row'], 'id' | 'created_at'>
-        Update: Partial<Database['public']['Tables']['org_files']['Insert']>
+        Insert: {
+          id?: string
+          organization_id: string
+          file_name: string
+          file_url: string
+          file_type: string
+          file_size: number
+          description?: string | null
+          approved?: boolean
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          organization_id?: string
+          file_name?: string
+          file_url?: string
+          file_type?: string
+          file_size?: number
+          description?: string | null
+          approved?: boolean
+          archived?: boolean
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+      }
+      app_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: Json
+          description: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value: Json
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          description?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+          updated_by?: string | null
+        }
       }
     }
     Views: {}

@@ -17,7 +17,7 @@ import type { CarouselItem } from '@/types/database'
 
 interface CarouselFormData {
   title: string
-  subtitle: string
+  description: string
   image_url: string
   link_url: string
   display_order: number
@@ -45,7 +45,7 @@ export function CarouselManager() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [formData, setFormData] = useState<CarouselFormData>({
     title: '',
-    subtitle: '',
+    description: '',
     image_url: '',
     link_url: '',
     display_order: 0,
@@ -134,16 +134,16 @@ export function CarouselManager() {
       setEditingItem(item)
       setFormData({
         title: item.title,
-        subtitle: item.subtitle || '',
+        description: item.description || '',
         image_url: item.image_url,
         link_url: item.link_url || '',
-        display_order: item.display_order.toString(),
+        display_order: item.display_order,
       })
     } else {
       setEditingItem(null)
       setFormData({
         title: '',
-        subtitle: '',
+        description: '',
         image_url: '',
         link_url: '',
         display_order: (items?.length || 0) + 1,
@@ -158,7 +158,7 @@ export function CarouselManager() {
     setEditingItem(null)
     setFormData({
       title: '',
-      subtitle: '',
+      description: '',
       image_url: '',
       link_url: '',
       display_order: 0,
@@ -240,8 +240,8 @@ export function CarouselManager() {
                 <CardTitle>{item.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                {item.subtitle && (
-                  <p className="text-sm text-muted-foreground mb-4">{item.subtitle}</p>
+                {item.description && (
+                  <p className="text-sm text-muted-foreground mb-4">{item.description}</p>
                 )}
                 <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
                   <span>Order: {item.display_order}</span>
@@ -309,12 +309,12 @@ export function CarouselManager() {
             />
           </FormField>
 
-          <FormField label="Subtitle" error={errors.subtitle} htmlFor="subtitle">
+          <FormField label="Description" error={errors.description} htmlFor="description">
             <Textarea
-              id="subtitle"
-              value={formData.subtitle}
-              onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
-              placeholder="Enter subtitle (optional)"
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Enter description (optional)"
               rows={2}
             />
           </FormField>

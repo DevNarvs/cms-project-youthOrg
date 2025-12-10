@@ -17,12 +17,10 @@ import { format } from 'date-fns'
 import type { Program } from '@/types/database'
 
 interface ProgramFormData {
-  title: string
+  name: string
   description: string
   start_date: string
   end_date: string
-  location: string
-  registration_url: string
   image_url: string
 }
 
@@ -47,12 +45,10 @@ export function ProgramsEditor() {
   const [editingItem, setEditingItem] = useState<Program | null>(null)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [formData, setFormData] = useState<ProgramFormData>({
-    title: '',
+    name: '',
     description: '',
     start_date: '',
     end_date: '',
-    location: '',
-    registration_url: '',
     image_url: '',
   })
   const [errors, setErrors] = useState<Partial<ProgramFormData>>({})
@@ -138,23 +134,19 @@ export function ProgramsEditor() {
     if (item) {
       setEditingItem(item)
       setFormData({
-        title: item.title,
+        name: item.name,
         description: item.description,
-        start_date: item.start_date.split('T')[0],
-        end_date: item.end_date.split('T')[0],
-        location: item.location || '',
-        registration_url: item.registration_url || '',
+        start_date: item.start_date ? item.start_date.split('T')[0] : '',
+        end_date: item.end_date ? item.end_date.split('T')[0] : '',
         image_url: item.image_url || '',
       })
     } else {
       setEditingItem(null)
       setFormData({
-        title: '',
+        name: '',
         description: '',
         start_date: '',
         end_date: '',
-        location: '',
-        registration_url: '',
         image_url: '',
       })
     }
@@ -166,12 +158,10 @@ export function ProgramsEditor() {
     setIsModalOpen(false)
     setEditingItem(null)
     setFormData({
-      title: '',
+      name: '',
       description: '',
       start_date: '',
       end_date: '',
-      location: '',
-      registration_url: '',
       image_url: '',
     })
     setErrors({})
@@ -180,8 +170,8 @@ export function ProgramsEditor() {
   const validate = (): boolean => {
     const newErrors: Partial<ProgramFormData> = {}
 
-    if (!formData.title.trim()) {
-      newErrors.title = 'Title is required'
+    if (!formData.name.trim()) {
+      newErrors.name = 'Program name is required'
     }
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required'
@@ -246,7 +236,7 @@ export function ProgramsEditor() {
                   <div className="relative h-48 mb-4 rounded-md overflow-hidden bg-muted">
                     <img
                       src={program.image_url}
-                      alt={program.title}
+                      alt={program.name}
                       className="w-full h-full object-cover"
                     />
                     {!program.approved && (
@@ -256,7 +246,7 @@ export function ProgramsEditor() {
                     )}
                   </div>
                 )}
-                <CardTitle>{program.title}</CardTitle>
+                <CardTitle>{program.name}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
@@ -331,12 +321,12 @@ export function ProgramsEditor() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <FormField label="Title" required error={errors.title} htmlFor="title">
+          <FormField label="Program Name" required error={errors.name} htmlFor="name">
             <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="Enter program title"
+              id="name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="Enter program name"
             />
           </FormField>
 
@@ -370,27 +360,6 @@ export function ProgramsEditor() {
             </FormField>
           </div>
 
-          <FormField label="Location" error={errors.location} htmlFor="location">
-            <Input
-              id="location"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              placeholder="Enter location (optional)"
-            />
-          </FormField>
-
-          <FormField
-            label="Registration URL"
-            error={errors.registration_url}
-            htmlFor="registration_url"
-          >
-            <Input
-              id="registration_url"
-              value={formData.registration_url}
-              onChange={(e) => setFormData({ ...formData, registration_url: e.target.value })}
-              placeholder="https://example.com/register (optional)"
-            />
-          </FormField>
 
           <FormField label="Image URL" error={errors.image_url} htmlFor="image_url">
             <Input
