@@ -8,9 +8,12 @@ export interface LoginCredentials {
 export interface UserProfile {
   id: string
   authUid: string
+  auth_uid: string
   email: string
+  full_name?: string
   role: 'admin' | 'organization'
   organizationId: string | null
+  organization_id: string | null
   organization?: {
     id: string
     name: string
@@ -81,9 +84,12 @@ export class AuthService {
     return {
       id: data.id,
       authUid: data.auth_uid,
+      auth_uid: data.auth_uid,
       email: data.email,
+      full_name: data.email.split('@')[0],
       role: data.role as 'admin' | 'organization',
       organizationId: data.organization_id,
+      organization_id: data.organization_id,
       organization: orgData ? {
         id: orgData.id,
         name: orgData.name,

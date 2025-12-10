@@ -3,22 +3,22 @@ import { User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { AuthService, UserProfile } from '@/services/authService'
 
-interface AuthContextType {
-  user: UserProfile | null
-  authUser: User | null
+export interface AuthContextType {
+  user: User | null
+  appUser: UserProfile | null
   loading: boolean
   isAdmin: boolean
   isOrganization: boolean
-  login: (email: string, password: string) => Promise<void>
-  logout: () => Promise<void>
+  signIn: (email: string, password: string) => Promise<void>
+  signOut: () => Promise<void>
   updatePassword: (newPassword: string) => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserProfile | null>(null)
-  const [authUser, setAuthUser] = useState<User | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [appUser, setAppUser] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -27,9 +27,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const { data: { user: authUser } } = await supabase.auth.getUser()
 
         if (authUser) {
-          setAuthUser(authUser)
+          setUser(authUser)
           const profile = await AuthService.getUserProfile(authUser.id)
-          setUser(profile)
+          setAppUser(profile)
         }
       } catch (error) {
         console.error('Failed to initialize auth:', error)
@@ -43,17 +43,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
-          setAuthUser(session.user)
+          setUser(session.user)
           try {
             const profile = await AuthService.getUserProfile(session.user.id)
-            setUser(profile)
+            setAppUser(profile)
           } catch (error) {
             console.error('Failed to load user profile:', error)
-            setUser(null)
+            setAppUser(null)
           }
         } else if (event === 'SIGNED_OUT') {
-          setAuthUser(null)
           setUser(null)
+          setAppUser(null)
         }
       }
     )
@@ -63,15 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const signIn = async (email: string, password: string) => {
     const profile = await AuthService.login({ email, password })
-    setUser(profile)
+    setAppUser(profile)
   }
 
-  const logout = async () => {
+  const signOut = async () => {
     await AuthService.logout()
     setUser(null)
-    setAuthUser(null)
+    setAppUser(null)
   }
 
   const updatePassword = async (newPassword: string) => {
@@ -82,12 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
-        authUser,
+        appUser,
         loading,
-        isAdmin: user?.role === 'admin',
-        isOrganization: user?.role === 'organization',
-        login,
-        logout,
+        isAdmin: appUser?.role === 'admin',
+        isOrganization: appUser?.role === 'organization',
+        signIn,
+        signOut,
         updatePassword
       }}
     >
