@@ -23,6 +23,20 @@ interface CarouselFormData {
   display_order: number
 }
 
+interface UpdateCarouselVars {
+  id: string
+  data: Partial<CarouselFormData>
+}
+
+interface DeleteCarouselVars {
+  id: string
+}
+
+interface ToggleCarouselApprovalVars {
+  id: string
+  approved: boolean
+}
+
 export function CarouselManager() {
   const { appUser, isAdmin } = useAuth()
   const queryClient = useQueryClient()
@@ -58,14 +72,14 @@ export function CarouselManager() {
     },
   })
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<void, Error, CarouselFormData>({
     mutationFn: async (data: CarouselFormData) => {
       const { error } = await supabase.from('carousel_items').insert({
         ...data,
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      } as any)
+      })
       if (error) throw error
     },
     onSuccess: () => {
@@ -74,11 +88,11 @@ export function CarouselManager() {
     },
   })
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<CarouselFormData> }) => {
+  const updateMutation = useMutation<void, Error, UpdateCarouselVars>({
+    mutationFn: async ({ id, data }: UpdateCarouselVars) => {
       const { error } = await supabase
         .from('carousel_items')
-        .update(data as any)
+        .update(data)
         .eq('id', id)
       if (error) throw error
     },
@@ -88,11 +102,11 @@ export function CarouselManager() {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+  const deleteMutation = useMutation<void, Error, DeleteCarouselVars>({
+    mutationFn: async ({ id }: DeleteCarouselVars) => {
       const { error } = await supabase
         .from('carousel_items')
-        .update({ archived: true } as any)
+        .update({ archived: true })
         .eq('id', id)
       if (error) throw error
     },
@@ -102,11 +116,11 @@ export function CarouselManager() {
     },
   })
 
-  const toggleApprovalMutation = useMutation({
-    mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
+  const toggleApprovalMutation = useMutation<void, Error, ToggleCarouselApprovalVars>({
+    mutationFn: async ({ id, approved }: ToggleCarouselApprovalVars) => {
       const { error } = await supabase
         .from('carousel_items')
-        .update({ approved } as any)
+        .update({ approved })
         .eq('id', id)
       if (error) throw error
     },
@@ -361,7 +375,7 @@ export function CarouselManager() {
       <ConfirmDialog
         isOpen={deleteConfirm !== null}
         onClose={() => setDeleteConfirm(null)}
-        onConfirm={() => deleteConfirm && deleteMutation.mutate(deleteConfirm)}
+        onConfirm={() => deleteConfirm && deleteMutation.mutate({ id: deleteConfirm })}
         title="Delete Carousel Item"
         description="Are you sure you want to delete this carousel item? This action cannot be undone."
         confirmText="Delete"

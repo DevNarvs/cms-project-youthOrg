@@ -26,6 +26,20 @@ interface OrganizationFormData {
   secondary_color: string
 }
 
+interface UpdateOrganizationVars {
+  id: string
+  data: Partial<OrganizationFormData>
+}
+
+interface DeleteOrganizationVars {
+  id: string
+}
+
+interface ToggleActiveVars {
+  id: string
+  active: boolean
+}
+
 export function OrganizationManager() {
   const { isAdmin } = useAuth()
   const queryClient = useQueryClient()
@@ -59,9 +73,9 @@ export function OrganizationManager() {
     enabled: isAdmin,
   })
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<void, Error, OrganizationFormData>({
     mutationFn: async (data: OrganizationFormData) => {
-      const { error } = await supabase.from('organizations').insert(data as any)
+      const { error } = await supabase.from('organizations').insert(data)
       if (error) throw error
     },
     onSuccess: () => {
@@ -70,11 +84,11 @@ export function OrganizationManager() {
     },
   })
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<OrganizationFormData> }) => {
+  const updateMutation = useMutation<void, Error, UpdateOrganizationVars>({
+    mutationFn: async ({ id, data }: UpdateOrganizationVars) => {
       const { error } = await supabase
         .from('organizations')
-        .update(data as any)
+        .update(data)
         .eq('id', id)
       if (error) throw error
     },
@@ -84,11 +98,11 @@ export function OrganizationManager() {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+  const deleteMutation = useMutation<void, Error, DeleteOrganizationVars>({
+    mutationFn: async ({ id }: DeleteOrganizationVars) => {
       const { error } = await supabase
         .from('organizations')
-        .update({ archived: true } as any)
+        .update({ archived: true })
         .eq('id', id)
       if (error) throw error
     },
@@ -98,11 +112,11 @@ export function OrganizationManager() {
     },
   })
 
-  const toggleActiveMutation = useMutation({
-    mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
+  const toggleActiveMutation = useMutation<void, Error, ToggleActiveVars>({
+    mutationFn: async ({ id, active }: ToggleActiveVars) => {
       const { error } = await supabase
         .from('organizations')
-        .update({ active } as any)
+        .update({ active })
         .eq('id', id)
       if (error) throw error
     },
@@ -443,7 +457,7 @@ export function OrganizationManager() {
       <ConfirmDialog
         isOpen={deleteConfirm !== null}
         onClose={() => setDeleteConfirm(null)}
-        onConfirm={() => deleteConfirm && deleteMutation.mutate(deleteConfirm)}
+        onConfirm={() => deleteConfirm && deleteMutation.mutate({ id: deleteConfirm })}
         title="Delete Organization"
         description="Are you sure you want to delete this organization? This will also archive all associated content and users. This action cannot be undone."
         confirmText="Delete"

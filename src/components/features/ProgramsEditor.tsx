@@ -26,6 +26,20 @@ interface ProgramFormData {
   image_url: string
 }
 
+interface UpdateProgramVars {
+  id: string
+  data: Partial<ProgramFormData>
+}
+
+interface DeleteProgramVars {
+  id: string
+}
+
+interface ToggleProgramApprovalVars {
+  id: string
+  approved: boolean
+}
+
 export function ProgramsEditor() {
   const { appUser, isAdmin } = useAuth()
   const queryClient = useQueryClient()
@@ -63,14 +77,14 @@ export function ProgramsEditor() {
     },
   })
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<void, Error, ProgramFormData>({
     mutationFn: async (data: ProgramFormData) => {
       const { error } = await supabase.from('programs').insert({
         ...data,
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      } as any)
+      })
       if (error) throw error
     },
     onSuccess: () => {
@@ -79,11 +93,11 @@ export function ProgramsEditor() {
     },
   })
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<ProgramFormData> }) => {
+  const updateMutation = useMutation<void, Error, UpdateProgramVars>({
+    mutationFn: async ({ id, data }: UpdateProgramVars) => {
       const { error } = await supabase
         .from('programs')
-        .update(data as any)
+        .update(data)
         .eq('id', id)
       if (error) throw error
     },
@@ -93,11 +107,11 @@ export function ProgramsEditor() {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+  const deleteMutation = useMutation<void, Error, DeleteProgramVars>({
+    mutationFn: async ({ id }: DeleteProgramVars) => {
       const { error } = await supabase
         .from('programs')
-        .update({ archived: true } as any)
+        .update({ archived: true })
         .eq('id', id)
       if (error) throw error
     },
@@ -107,11 +121,11 @@ export function ProgramsEditor() {
     },
   })
 
-  const toggleApprovalMutation = useMutation({
-    mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
+  const toggleApprovalMutation = useMutation<void, Error, ToggleProgramApprovalVars>({
+    mutationFn: async ({ id, approved }: ToggleProgramApprovalVars) => {
       const { error } = await supabase
         .from('programs')
-        .update({ approved } as any)
+        .update({ approved })
         .eq('id', id)
       if (error) throw error
     },
@@ -408,7 +422,7 @@ export function ProgramsEditor() {
       <ConfirmDialog
         isOpen={deleteConfirm !== null}
         onClose={() => setDeleteConfirm(null)}
-        onConfirm={() => deleteConfirm && deleteMutation.mutate(deleteConfirm)}
+        onConfirm={() => deleteConfirm && deleteMutation.mutate({ id: deleteConfirm })}
         title="Delete Program"
         description="Are you sure you want to delete this program? This action cannot be undone."
         confirmText="Delete"

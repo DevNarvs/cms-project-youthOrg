@@ -22,6 +22,20 @@ interface AnnouncementFormData {
   publish_date: string
 }
 
+interface UpdateAnnouncementVars {
+  id: string
+  data: Partial<AnnouncementFormData>
+}
+
+interface DeleteAnnouncementVars {
+  id: string
+}
+
+interface ToggleApprovalVars {
+  id: string
+  approved: boolean
+}
+
 export function AnnouncementEditor() {
   const { appUser, isAdmin } = useAuth()
   const queryClient = useQueryClient()
@@ -55,14 +69,14 @@ export function AnnouncementEditor() {
     },
   })
 
-  const createMutation = useMutation({
+  const createMutation = useMutation<void, Error, AnnouncementFormData>({
     mutationFn: async (data: AnnouncementFormData) => {
       const { error } = await supabase.from('announcements').insert({
         ...data,
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      } as any)
+      })
       if (error) throw error
     },
     onSuccess: () => {
@@ -71,11 +85,11 @@ export function AnnouncementEditor() {
     },
   })
 
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<AnnouncementFormData> }) => {
+  const updateMutation = useMutation<void, Error, UpdateAnnouncementVars>({
+    mutationFn: async ({ id, data }: UpdateAnnouncementVars) => {
       const { error } = await supabase
         .from('announcements')
-        .update(data as any)
+        .update(data)
         .eq('id', id)
       if (error) throw error
     },
@@ -85,11 +99,11 @@ export function AnnouncementEditor() {
     },
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
+  const deleteMutation = useMutation<void, Error, DeleteAnnouncementVars>({
+    mutationFn: async ({ id }: DeleteAnnouncementVars) => {
       const { error } = await supabase
         .from('announcements')
-        .update({ archived: true } as any)
+        .update({ archived: true })
         .eq('id', id)
       if (error) throw error
     },
@@ -99,11 +113,11 @@ export function AnnouncementEditor() {
     },
   })
 
-  const toggleApprovalMutation = useMutation({
-    mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
+  const toggleApprovalMutation = useMutation<void, Error, ToggleApprovalVars>({
+    mutationFn: async ({ id, approved }: ToggleApprovalVars) => {
       const { error } = await supabase
         .from('announcements')
-        .update({ approved } as any)
+        .update({ approved })
         .eq('id', id)
       if (error) throw error
     },
@@ -324,7 +338,7 @@ export function AnnouncementEditor() {
       <ConfirmDialog
         isOpen={deleteConfirm !== null}
         onClose={() => setDeleteConfirm(null)}
-        onConfirm={() => deleteConfirm && deleteMutation.mutate(deleteConfirm)}
+        onConfirm={() => deleteConfirm && deleteMutation.mutate({ id: deleteConfirm })}
         title="Delete Announcement"
         description="Are you sure you want to delete this announcement? This action cannot be undone."
         confirmText="Delete"
