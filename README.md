@@ -19,6 +19,7 @@ npm run dev
 - [FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md) - Frontend architecture and patterns
 - [COMPONENTS_GUIDE.md](./COMPONENTS_GUIDE.md) - Reusable UI components documentation
 - [SUPABASE_OPERATIONS.md](./SUPABASE_OPERATIONS.md) - Complete Supabase data operations guide
+- [AUTH_GUIDE.md](./AUTH_GUIDE.md) - Authentication and authorization complete guide
 
 ## Project Status
 ✅ Section 1: Tech Stack Setup - Complete
@@ -26,3 +27,4 @@ npm run dev
 ✅ Section 3: Frontend Architecture - Complete
 ✅ Section 4: Reusable UI Components - Complete
 ✅ Section 5: Supabase Data Operations - Complete
+✅ Section 6: Authentication & Authorization - Complete
