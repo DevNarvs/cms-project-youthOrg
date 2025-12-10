@@ -17,8 +17,10 @@ npm run dev
 - [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Detailed setup instructions and architecture
 - [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) - Complete database schema documentation
 - [FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md) - Frontend architecture and patterns
+- [COMPONENTS_GUIDE.md](./COMPONENTS_GUIDE.md) - Reusable UI components documentation
 
 ## Project Status
 ✅ Section 1: Tech Stack Setup - Complete
 ✅ Section 2: Database Schema - Complete
 ✅ Section 3: Frontend Architecture - Complete
+✅ Section 4: Reusable UI Components - Complete

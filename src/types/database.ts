@@ -3,9 +3,14 @@ export type UserRole = 'admin' | 'organization'
 export interface Organization {
   id: string
   name: string
+  description: string | null
+  website_url: string | null
+  contact_email: string | null
+  contact_phone: string | null
   logo_url: string | null
   primary_color: string
   secondary_color: string
+  active: boolean
   archived: boolean
   created_at: string
   updated_at: string
@@ -30,7 +35,7 @@ export interface CarouselItem {
   id: string
   organization_id: string
   title: string
-  description: string | null
+  subtitle: string | null
   image_url: string
   link_url: string | null
   display_order: number
@@ -47,7 +52,7 @@ export interface Announcement {
   organization_id: string
   title: string
   content: string
-  published_date: string
+  publish_date: string
   approved: boolean
   archived: boolean
   created_at: string
@@ -59,10 +64,12 @@ export interface Announcement {
 export interface Program {
   id: string
   organization_id: string
-  name: string
+  title: string
   description: string
-  start_date: string | null
-  end_date: string | null
+  start_date: string
+  end_date: string
+  location: string | null
+  registration_url: string | null
   image_url: string | null
   approved: boolean
   archived: boolean
@@ -80,6 +87,7 @@ export interface OrgFile {
   file_type: string
   file_size: number
   description: string | null
+  uploaded_by: string | null
   approved: boolean
   archived: boolean
   created_at: string
@@ -87,6 +95,8 @@ export interface OrgFile {
   created_by: string | null
   updated_by: string | null
 }
+
+export type FileItem = OrgFile
 
 export interface AppSetting {
   id: string
