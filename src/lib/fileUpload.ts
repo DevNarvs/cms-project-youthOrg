@@ -133,7 +133,7 @@ export async function uploadPDF(
       file_type: file.type,
       file_size: file.size,
       uploaded_by: userId
-    })
+    } as any)
 
   if (dbError) throw new FileUploadError(dbError.message)
 }
@@ -174,7 +174,7 @@ export async function uploadGalleryImages(
         file_type: file.type,
         file_size: file.size,
         uploaded_by: userId
-      })
+      } as any)
 
     return {
       url: publicUrl,

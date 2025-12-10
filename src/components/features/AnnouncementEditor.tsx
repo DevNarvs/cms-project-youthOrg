@@ -76,7 +76,7 @@ export function AnnouncementEditor() {
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      })
+      } as any)
       if (error) throw error
     },
     onSuccess: () => {
@@ -89,7 +89,7 @@ export function AnnouncementEditor() {
     mutationFn: async ({ id, data }: UpdateAnnouncementVars) => {
       const { error } = await supabase
         .from('announcements')
-        .update(data)
+        .update(data as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -103,7 +103,7 @@ export function AnnouncementEditor() {
     mutationFn: async ({ id }: DeleteAnnouncementVars) => {
       const { error } = await supabase
         .from('announcements')
-        .update({ archived: true })
+        .update({ archived: true } as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -117,7 +117,7 @@ export function AnnouncementEditor() {
     mutationFn: async ({ id, approved }: ToggleApprovalVars) => {
       const { error } = await supabase
         .from('announcements')
-        .update({ approved })
+        .update({ approved } as any)
         .eq('id', id)
       if (error) throw error
     },

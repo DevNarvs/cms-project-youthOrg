@@ -104,7 +104,7 @@ export class DataService {
 
     let query = supabase
       .from(table)
-      .update(updateData)
+      .update(updateData as any)
       .eq('id', id)
 
     if (!isAdmin) {
@@ -138,7 +138,7 @@ export class DataService {
       .update({
         archived: true,
         updated_by: userId
-      })
+      } as any)
       .eq('id', id)
 
     if (!isAdmin) {
@@ -162,7 +162,7 @@ export class DataService {
       .update({
         archived: false,
         updated_by: userId
-      })
+      } as any)
       .eq('id', id)
 
     if (!isAdmin) {
@@ -184,7 +184,7 @@ export class DataService {
       .update({
         approved: true,
         updated_by: adminId
-      })
+      } as any)
       .eq('id', id)
 
     if (error) throw error
@@ -200,7 +200,7 @@ export class DataService {
       .update({
         approved: false,
         updated_by: adminId
-      })
+      } as any)
       .eq('id', id)
 
     if (error) throw error
@@ -236,7 +236,7 @@ export class DataService {
       .update({
         approved: true,
         updated_by: adminId
-      })
+      } as any)
       .in('id', ids)
 
     if (error) throw error
@@ -252,7 +252,7 @@ export class DataService {
       .update({
         archived: true,
         updated_by: userId
-      })
+      } as any)
       .in('id', ids)
 
     if (error) throw error

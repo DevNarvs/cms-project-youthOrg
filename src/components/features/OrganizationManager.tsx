@@ -33,7 +33,7 @@ interface DeleteOrganizationVars {
 
 interface ToggleActiveVars {
   id: string
-  active: boolean
+  archived: boolean
 }
 
 export function OrganizationManager() {
@@ -67,7 +67,7 @@ export function OrganizationManager() {
 
   const createMutation = useMutation<void, Error, OrganizationFormData>({
     mutationFn: async (data: OrganizationFormData) => {
-      const { error } = await supabase.from('organizations').insert(data)
+      const { error } = await supabase.from('organizations').insert(data as any)
       if (error) throw error
     },
     onSuccess: () => {
@@ -80,7 +80,7 @@ export function OrganizationManager() {
     mutationFn: async ({ id, data }: UpdateOrganizationVars) => {
       const { error } = await supabase
         .from('organizations')
-        .update(data)
+        .update(data as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -94,7 +94,7 @@ export function OrganizationManager() {
     mutationFn: async ({ id }: DeleteOrganizationVars) => {
       const { error } = await supabase
         .from('organizations')
-        .update({ archived: true })
+        .update({ archived: true } as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -105,10 +105,10 @@ export function OrganizationManager() {
   })
 
   const toggleActiveMutation = useMutation<void, Error, ToggleActiveVars>({
-    mutationFn: async ({ id, active }: ToggleActiveVars) => {
+    mutationFn: async ({ id, archived }: ToggleActiveVars) => {
       const { error } = await supabase
         .from('organizations')
-        .update({ active })
+        .update({ archived } as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -228,28 +228,15 @@ export function OrganizationManager() {
                   )}
                   <div className="flex-1">
                     <CardTitle className="text-lg">{org.name}</CardTitle>
-                    {org.active ? (
+                    {!org.archived ? (
                       <span className="text-xs text-green-600">Active</span>
                     ) : (
-                      <span className="text-xs text-muted-foreground">Inactive</span>
+                      <span className="text-xs text-muted-foreground">Archived</span>
                     )}
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                {org.description && (
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                    {org.description}
-                  </p>
-                )}
-                <div className="space-y-2 text-sm mb-4">
-                  {org.contact_email && (
-                    <div className="text-muted-foreground truncate">{org.contact_email}</div>
-                  )}
-                  {org.contact_phone && (
-                    <div className="text-muted-foreground">{org.contact_phone}</div>
-                  )}
-                </div>
                 <div className="flex items-center space-x-2 mb-4">
                   <div className="flex-1 flex items-center space-x-2">
                     <div
@@ -280,11 +267,11 @@ export function OrganizationManager() {
                     onClick={() =>
                       toggleActiveMutation.mutate({
                         id: org.id,
-                        active: !org.active,
+                        archived: !org.archived,
                       })
                     }
                   >
-                    {org.active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    {!org.archived ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
                   <Button
                     variant="destructive"
@@ -315,46 +302,6 @@ export function OrganizationManager() {
               placeholder="Enter organization name"
             />
           </FormField>
-
-          <FormField label="Description" error={errors.description} htmlFor="description">
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="Enter organization description (optional)"
-              rows={3}
-            />
-          </FormField>
-
-          <FormField label="Website URL" error={errors.website_url} htmlFor="website_url">
-            <Input
-              id="website_url"
-              value={formData.website_url}
-              onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
-              placeholder="https://example.com (optional)"
-            />
-          </FormField>
-
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="Contact Email" error={errors.contact_email} htmlFor="contact_email">
-              <Input
-                id="contact_email"
-                type="email"
-                value={formData.contact_email}
-                onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
-                placeholder="contact@example.com (optional)"
-              />
-            </FormField>
-
-            <FormField label="Contact Phone" error={errors.contact_phone} htmlFor="contact_phone">
-              <Input
-                id="contact_phone"
-                value={formData.contact_phone}
-                onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
-                placeholder="(555) 123-4567 (optional)"
-              />
-            </FormField>
-          </div>
 
           <FormField label="Logo URL" error={errors.logo_url} htmlFor="logo_url">
             <Input

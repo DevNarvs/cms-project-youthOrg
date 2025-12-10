@@ -50,7 +50,7 @@ export function CarouselManager() {
     link_url: '',
     display_order: 0,
   })
-  const [errors, setErrors] = useState<Partial<CarouselFormData>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
 
   const { data: items, isLoading, error } = useQuery({
     queryKey: ['carousel-items', appUser?.organization_id],
@@ -79,7 +79,7 @@ export function CarouselManager() {
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      })
+      } as any)
       if (error) throw error
     },
     onSuccess: () => {
@@ -92,7 +92,7 @@ export function CarouselManager() {
     mutationFn: async ({ id, data }: UpdateCarouselVars) => {
       const { error } = await supabase
         .from('carousel_items')
-        .update(data)
+        .update(data as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -106,7 +106,7 @@ export function CarouselManager() {
     mutationFn: async ({ id }: DeleteCarouselVars) => {
       const { error } = await supabase
         .from('carousel_items')
-        .update({ archived: true })
+        .update({ archived: true } as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -120,7 +120,7 @@ export function CarouselManager() {
     mutationFn: async ({ id, approved }: ToggleCarouselApprovalVars) => {
       const { error } = await supabase
         .from('carousel_items')
-        .update({ approved })
+        .update({ approved } as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -167,7 +167,7 @@ export function CarouselManager() {
   }
 
   const validate = (): boolean => {
-    const newErrors: Partial<CarouselFormData> = {}
+    const newErrors: Record<string, string> = {}
 
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required'

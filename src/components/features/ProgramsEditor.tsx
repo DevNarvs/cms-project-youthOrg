@@ -80,7 +80,7 @@ export function ProgramsEditor() {
         organization_id: appUser?.organization_id,
         approved: isAdmin,
         created_by: appUser?.id,
-      })
+      } as any)
       if (error) throw error
     },
     onSuccess: () => {
@@ -93,7 +93,7 @@ export function ProgramsEditor() {
     mutationFn: async ({ id, data }: UpdateProgramVars) => {
       const { error } = await supabase
         .from('programs')
-        .update(data)
+        .update(data as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -107,7 +107,7 @@ export function ProgramsEditor() {
     mutationFn: async ({ id }: DeleteProgramVars) => {
       const { error } = await supabase
         .from('programs')
-        .update({ archived: true })
+        .update({ archived: true } as any)
         .eq('id', id)
       if (error) throw error
     },
@@ -121,7 +121,7 @@ export function ProgramsEditor() {
     mutationFn: async ({ id, approved }: ToggleProgramApprovalVars) => {
       const { error } = await supabase
         .from('programs')
-        .update({ approved })
+        .update({ approved } as any)
         .eq('id', id)
       if (error) throw error
     },

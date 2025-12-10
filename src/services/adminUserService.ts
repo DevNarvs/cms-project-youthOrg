@@ -53,13 +53,13 @@ export class AdminUserService {
         .insert({
           name: data.organizationName,
           created_by: adminId
-        })
+        } as any)
         .select()
         .single()
 
-      if (orgError) {
+      if (orgError || !organization) {
         await admin.auth.admin.deleteUser(authUser.user.id)
-        throw new Error(`Failed to create organization: ${orgError.message}`)
+        throw new Error(`Failed to create organization: ${orgError?.message}`)
       }
 
       const { error: appUserError } = await supabase
@@ -70,7 +70,7 @@ export class AdminUserService {
           full_name: data.email.split('@')[0],
           role: 'organization',
           organization_id: organization.id
-        })
+        } as any)
 
       if (appUserError) {
         await admin.auth.admin.deleteUser(authUser.user.id)
@@ -97,7 +97,7 @@ export class AdminUserService {
 
     const { data: appUser, error: fetchError } = await supabase
       .from('app_users')
-      .select('auth_uid, email')
+      .select('id, email')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
       .maybeSingle()
@@ -126,7 +126,7 @@ export class AdminUserService {
     if (newEmail) {
       await supabase
         .from('app_users')
-        .update({ email: newEmail })
+        .update({ email: newEmail } as any)
         .eq('id', appUser.id)
     }
   }
@@ -143,7 +143,7 @@ export class AdminUserService {
       .update({
         ...presidentData,
         updated_by: adminId
-      })
+      } as any)
       .eq('id', organizationId)
 
     if (error) {
@@ -171,13 +171,13 @@ export class AdminUserService {
 
       await supabase
         .from('app_users')
-        .update({ archived: true })
+        .update({ archived: true } as any)
         .eq('id', appUser.id)
     }
 
     await supabase
       .from('organizations')
-      .update({ archived: true })
+      .update({ archived: true } as any)
       .eq('id', organizationId)
   }
 
@@ -200,13 +200,13 @@ export class AdminUserService {
 
       await supabase
         .from('app_users')
-        .update({ archived: false })
+        .update({ archived: false } as any)
         .eq('id', appUser.id)
     }
 
     await supabase
       .from('organizations')
-      .update({ archived: false })
+      .update({ archived: false } as any)
       .eq('id', organizationId)
   }
 
@@ -289,7 +289,7 @@ export class AdminUserService {
         full_name: email.split('@')[0],
         role: 'admin',
         organization_id: null
-      })
+      } as any)
 
     if (appUserError) {
       await admin.auth.admin.deleteUser(authUser.user.id)
