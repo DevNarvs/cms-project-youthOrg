@@ -56,21 +56,18 @@ export class AuthService {
       .from('app_users')
       .select(`
         id,
-        auth_uid,
         email,
+        full_name,
         role,
         organization_id,
-        active,
+        archived,
         organizations (
           id,
           name,
-          logo_url,
-          president_name,
-          president_email,
-          president_phone
+          logo_url
         )
       `)
-      .eq('auth_uid', authUid)
+      .eq('id', authUid)
       .maybeSingle()
 
     if (error || !data) {
@@ -83,10 +80,10 @@ export class AuthService {
 
     return {
       id: data.id,
-      authUid: data.auth_uid,
-      auth_uid: data.auth_uid,
+      authUid: data.id,
+      auth_uid: data.id,
       email: data.email,
-      full_name: data.email.split('@')[0],
+      full_name: data.full_name || data.email.split('@')[0],
       role: data.role as 'admin' | 'organization',
       organizationId: data.organization_id,
       organization_id: data.organization_id,
@@ -94,11 +91,11 @@ export class AuthService {
         id: orgData.id,
         name: orgData.name,
         logo_url: orgData.logo_url,
-        president_name: orgData.president_name,
-        president_email: orgData.president_email,
-        president_phone: orgData.president_phone
+        president_name: null,
+        president_email: null,
+        president_phone: null
       } : undefined,
-      active: data.active
+      active: !data.archived
     }
   }
 

@@ -52,13 +52,6 @@ export class AdminUserService {
         .from('organizations')
         .insert({
           name: data.organizationName,
-          description: data.description,
-          president_name: data.presidentName,
-          president_email: data.presidentEmail,
-          president_phone: data.presidentPhone,
-          contact_email: data.contactEmail || data.email,
-          contact_phone: data.contactPhone,
-          active: true,
           created_by: adminId
         })
         .select()
@@ -72,11 +65,11 @@ export class AdminUserService {
       const { error: appUserError } = await supabase
         .from('app_users')
         .insert({
-          auth_uid: authUser.user.id,
+          id: authUser.user.id,
           email: data.email,
+          full_name: data.email.split('@')[0],
           role: 'organization',
-          organization_id: organization.id,
-          active: true
+          organization_id: organization.id
         })
 
       if (appUserError) {
@@ -122,7 +115,7 @@ export class AdminUserService {
     }
 
     const { error: updateError } = await admin.auth.admin.updateUserById(
-      appUser.auth_uid,
+      appUser.id,
       updateData
     )
 
@@ -134,16 +127,14 @@ export class AdminUserService {
       await supabase
         .from('app_users')
         .update({ email: newEmail })
-        .eq('auth_uid', appUser.auth_uid)
+        .eq('id', appUser.id)
     }
   }
 
   static async updatePresidentInfo(
     organizationId: string,
     presidentData: {
-      president_name?: string
-      president_email?: string
-      president_phone?: string
+      name?: string
     },
     adminId: string
   ): Promise<void> {
@@ -156,7 +147,7 @@ export class AdminUserService {
       .eq('id', organizationId)
 
     if (error) {
-      throw new Error(`Failed to update president info: ${error.message}`)
+      throw new Error(`Failed to update organization info: ${error.message}`)
     }
   }
 
@@ -167,26 +158,26 @@ export class AdminUserService {
 
     const { data: appUser } = await supabase
       .from('app_users')
-      .select('auth_uid')
+      .select('id')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
       .maybeSingle()
 
     if (appUser) {
-      await admin.auth.admin.updateUserById(appUser.auth_uid, {
+      await admin.auth.admin.updateUserById(appUser.id, {
         ban_duration: 'none',
         user_metadata: { banned: true }
       })
 
       await supabase
         .from('app_users')
-        .update({ active: false })
-        .eq('auth_uid', appUser.auth_uid)
+        .update({ archived: true })
+        .eq('id', appUser.id)
     }
 
     await supabase
       .from('organizations')
-      .update({ active: false })
+      .update({ archived: true })
       .eq('id', organizationId)
   }
 
@@ -197,25 +188,25 @@ export class AdminUserService {
 
     const { data: appUser } = await supabase
       .from('app_users')
-      .select('auth_uid')
+      .select('id')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
       .maybeSingle()
 
     if (appUser) {
-      await admin.auth.admin.updateUserById(appUser.auth_uid, {
+      await admin.auth.admin.updateUserById(appUser.id, {
         user_metadata: { banned: false }
       })
 
       await supabase
         .from('app_users')
-        .update({ active: true })
-        .eq('auth_uid', appUser.auth_uid)
+        .update({ archived: false })
+        .eq('id', appUser.id)
     }
 
     await supabase
       .from('organizations')
-      .update({ active: true })
+      .update({ archived: false })
       .eq('id', organizationId)
   }
 
@@ -226,13 +217,13 @@ export class AdminUserService {
 
     const { data: appUser } = await supabase
       .from('app_users')
-      .select('auth_uid')
+      .select('id')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
       .maybeSingle()
 
     if (appUser) {
-      await admin.auth.admin.deleteUser(appUser.auth_uid)
+      await admin.auth.admin.deleteUser(appUser.id)
     }
 
     await supabase
@@ -248,7 +239,7 @@ export class AdminUserService {
 
     const { data: appUser } = await supabase
       .from('app_users')
-      .select('auth_uid, email')
+      .select('id, email')
       .eq('organization_id', organizationId)
       .eq('role', 'organization')
       .maybeSingle()
@@ -260,7 +251,7 @@ export class AdminUserService {
     const tempPassword = this.generateTemporaryPassword()
 
     const { error } = await admin.auth.admin.updateUserById(
-      appUser.auth_uid,
+      appUser.id,
       { password: tempPassword }
     )
 
@@ -293,11 +284,11 @@ export class AdminUserService {
     const { error: appUserError } = await supabase
       .from('app_users')
       .insert({
-        auth_uid: authUser.user.id,
+        id: authUser.user.id,
         email,
+        full_name: email.split('@')[0],
         role: 'admin',
-        organization_id: null,
-        active: true
+        organization_id: null
       })
 
     if (appUserError) {

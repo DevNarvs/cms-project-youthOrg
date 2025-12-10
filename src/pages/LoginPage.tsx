@@ -16,13 +16,7 @@ export function LoginPage() {
     setLoading(true)
 
     try {
-      const { error } = await signIn(email, password)
-
-      if (error) {
-        setError(error.message || 'Invalid email or password')
-        setLoading(false)
-        return
-      }
+      await signIn(email, password)
 
       if (isAdmin) {
         navigate('/admin')

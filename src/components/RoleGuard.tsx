@@ -19,7 +19,7 @@ export function RoleGuard({ children, allowedRoles, fallback }: RoleGuardProps) 
     )
   }
 
-  if (!user || !allowedRoles.includes(user.role)) {
+  if (!user || !allowedRoles.includes(user.role as 'admin' | 'organization')) {
     return fallback || (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

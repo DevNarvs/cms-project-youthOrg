@@ -216,13 +216,6 @@ function generateHTML(
     </div>
   </header>
 
-  ${org?.description || org?.contact_email || org?.contact_phone ? `
-    <div class="org-info">
-      ${org.description ? `<p><strong>About:</strong> ${org.description}</p>` : ''}
-      ${org.contact_email ? `<p><strong>Email:</strong> ${org.contact_email}</p>` : ''}
-      ${org.contact_phone ? `<p><strong>Phone:</strong> ${org.contact_phone}</p>` : ''}
-    </div>
-  ` : ''}
 
   ${programs.length > 0 ? `
     <section>
@@ -231,18 +224,18 @@ function generateHTML(
         <thead>
           <tr>
             <th>Program Name</th>
+            <th>Description</th>
             <th>Start Date</th>
             <th>End Date</th>
-            <th>Location</th>
           </tr>
         </thead>
         <tbody>
           ${programs.map(p => `
             <tr>
-              <td><strong>${p.title}</strong><br/><small>${p.description}</small></td>
-              <td>${new Date(p.start_date).toLocaleDateString()}</td>
-              <td>${new Date(p.end_date).toLocaleDateString()}</td>
-              <td>${p.location || 'TBD'}</td>
+              <td><strong>${p.name}</strong></td>
+              <td>${p.description}</td>
+              <td>${p.start_date ? new Date(p.start_date).toLocaleDateString() : 'TBD'}</td>
+              <td>${p.end_date ? new Date(p.end_date).toLocaleDateString() : 'TBD'}</td>
             </tr>
           `).join('')}
         </tbody>
@@ -256,7 +249,7 @@ function generateHTML(
       ${announcements.map(a => `
         <div class="announcement">
           <h3>${a.title}</h3>
-          <div class="date">${new Date(a.publish_date).toLocaleDateString('en-US', {
+          <div class="date">${new Date(a.published_date).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'

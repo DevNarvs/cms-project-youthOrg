@@ -17,10 +17,6 @@ import type { Organization } from '@/types/database'
 
 interface OrganizationFormData {
   name: string
-  description: string
-  website_url: string
-  contact_email: string
-  contact_phone: string
   logo_url: string
   primary_color: string
   secondary_color: string
@@ -48,10 +44,6 @@ export function OrganizationManager() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
   const [formData, setFormData] = useState<OrganizationFormData>({
     name: '',
-    description: '',
-    website_url: '',
-    contact_email: '',
-    contact_phone: '',
     logo_url: '',
     primary_color: '#3b82f6',
     secondary_color: '#64748b',
@@ -130,10 +122,6 @@ export function OrganizationManager() {
       setEditingItem(item)
       setFormData({
         name: item.name,
-        description: item.description || '',
-        website_url: item.website_url || '',
-        contact_email: item.contact_email || '',
-        contact_phone: item.contact_phone || '',
         logo_url: item.logo_url || '',
         primary_color: item.primary_color,
         secondary_color: item.secondary_color,
@@ -142,10 +130,6 @@ export function OrganizationManager() {
       setEditingItem(null)
       setFormData({
         name: '',
-        description: '',
-        website_url: '',
-        contact_email: '',
-        contact_phone: '',
         logo_url: '',
         primary_color: '#3b82f6',
         secondary_color: '#64748b',
@@ -160,10 +144,6 @@ export function OrganizationManager() {
     setEditingItem(null)
     setFormData({
       name: '',
-      description: '',
-      website_url: '',
-      contact_email: '',
-      contact_phone: '',
       logo_url: '',
       primary_color: '#3b82f6',
       secondary_color: '#64748b',
@@ -176,9 +156,6 @@ export function OrganizationManager() {
 
     if (!formData.name.trim()) {
       newErrors.name = 'Organization name is required'
-    }
-    if (formData.contact_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
-      newErrors.contact_email = 'Invalid email address'
     }
     if (!formData.primary_color || !/^#[0-9A-F]{6}$/i.test(formData.primary_color)) {
       newErrors.primary_color = 'Invalid color format (use #RRGGBB)'

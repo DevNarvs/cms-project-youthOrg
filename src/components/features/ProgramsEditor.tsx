@@ -258,12 +258,6 @@ export function ProgramsEditor() {
                     {format(new Date(program.start_date), 'MMM dd, yyyy')} -{' '}
                     {format(new Date(program.end_date), 'MMM dd, yyyy')}
                   </div>
-                  {program.location && (
-                    <div className="flex items-center text-muted-foreground">
-                      <MapPin className="h-4 w-4 mr-2" />
-                      {program.location}
-                    </div>
-                  )}
                 </div>
                 <div className="flex items-center justify-between mb-4">
                   {program.approved ? (
